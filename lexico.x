@@ -1,5 +1,5 @@
 {
-  module Main (main, Token(..), AlexPosn(..), alexScanTokens, token_posn) where
+  module Main (main, Token(..), AlexPosn(..), alexScanTokens) where
 }
 
 %wrapper "posn"
@@ -16,25 +16,27 @@ tokens :-
   string                                      { \p s -> String p }
   ptr                                         { \p s -> Pointer p }
   bool                                        { \p s -> Boolean p }
-  $digit+	                                    { \p s -> IntLit p (read s) }
+  $digit+                                     { \p s -> IntLit p (read s) }
   ";"                                         { \p s -> SemiColon p}
-  (\=\=)|(\!\=)|(\<\=)|(\>\=)|(\&\&)|(\|\|)|(\<)|(\>)   { \p s -> BoolSym p (read s) }
-  [\+\-\*\/\^]			                      { \p s -> Sym p (head s) }
+  (\=\=)|(\!\=)|(\<\=)|(\>\=)|(\&\&)|(\|\|)|(\<)|(\>)   { \p s -> BoolSym p s }
+  [\+\-\*\/\^]                            { \p s -> Sym p (head s) }
   \=                                              { \p s -> Attrib p }
   \(                                              { \p s -> OpenParenth p }
   \)                                              { \p s -> CloseParenth p }
   \[                                              { \p s -> OpenBracket p }
   \]                                              { \p s -> CloseBracket p }
-  \=\>		                                      { \p s -> PtrOp p }
-  \$		                                      { \p s -> AdressOp p }
+  \{                                              { \p s -> OpenScope p }
+  \}                                              { \p s -> CloseScope p }
+  \=\>                                          { \p s -> PtrOp p }
+  \$                                          { \p s -> AdressOp p }
   endfor                                          { \p s -> EndFor p }
   for                                          { \p s -> For p }
   endwhile                                          { \p s -> EndWhile p }
   while                                          { \p s -> While p }
   endif                                          { \p s -> EndIf p }
   if                                          { \p s -> If p }
-  $alpha [$alpha $digit \_ \']*	              { \p s -> Var p s }
-  \" $alpha [$alpha $digit ! \_ \']* \"       { \p s -> StrLit s}
+  $alpha [$alpha $digit \_ \']*               { \p s -> Var p s }
+  \" $alpha [$alpha $digit ! \_ \']* \"       { \p s -> StrLit p s }
 {
 -- Each right-hand side has type :: AlexPosn -> String -> Token
 -- Some action helpers:
@@ -51,6 +53,8 @@ data Token =
   CloseParenth AlexPosn |
   OpenBracket AlexPosn |
   CloseBracket AlexPosn |
+  OpenScope AlexPosn |
+  CloseScope AlexPosn |
   SemiColon AlexPosn     |
   PtrOp AlexPosn     |
   AdressOp AlexPosn     |
@@ -64,13 +68,8 @@ data Token =
   StrLit AlexPosn String |
   Sym AlexPosn Char      |
   BoolSym AlexPosn String |
-  Var AlexPosn String    |
+  Var AlexPosn String    
   deriving (Eq,Show)
-
-token_posn (In p) = p
-token_posn (Sym p _) = p
-token_posn (Var p _) = p
-token_posn (Int p _) = p
 
 main = do
   s <- getContents
