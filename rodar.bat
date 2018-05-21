@@ -1,0 +1,1 @@
+sintatico.exe < ./arquivo.in

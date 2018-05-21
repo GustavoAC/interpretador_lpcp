@@ -1,5 +1,8 @@
 {
-  module Main (main, Token(..), AlexPosn(..), alexScanTokens) where
+module Lexico (getTokens, Token(..), AlexPosn(..), alexScanTokens) where
+
+import System.IO
+import System.IO.Unsafe
 }
 
 %wrapper "posn"
@@ -11,13 +14,13 @@ tokens :-
 
   $white+                                     ;
   "--".*.                                     ;
-  int                                         { \p s -> Int p }
-  float                                       { \p s -> Float p }
-  string                                      { \p s -> String p }
-  ptr                                         { \p s -> Pointer p }
-  bool                                        { \p s -> Boolean p }
+  int                                         { \p s -> TypeInt p }
+  float                                       { \p s -> TypeFloat p }
+  string                                      { \p s -> TypeString p }
+  ptr                                         { \p s -> TypePointer p }
+  bool                                        { \p s -> TypeBoolean p }
   $digit+                                     { \p s -> IntLit p (read s) }
-  ";"                                         { \p s -> SemiColon p}
+  ";"                                         { \p s -> Semicolon p}
   (\=\=)|(\!\=)|(\<\=)|(\>\=)|(\&\&)|(\|\|)|(\<)|(\>)   { \p s -> BoolSym p s }
   [\+\-\*\/\^]                            { \p s -> Sym p (head s) }
   \=                                              { \p s -> Attrib p }
@@ -43,11 +46,11 @@ tokens :-
 
 -- The token type:
 data Token =
-  Int AlexPosn           |
-  Float AlexPosn         |
-  String AlexPosn        |
-  Pointer AlexPosn        |
-  Boolean AlexPosn        |
+  TypeInt AlexPosn           |
+  TypeFloat AlexPosn         |
+  TypeString AlexPosn        |
+  TypePointer AlexPosn        |
+  TypeBoolean AlexPosn        |
   Attrib AlexPosn         |
   OpenParenth AlexPosn |
   CloseParenth AlexPosn |
@@ -55,7 +58,7 @@ data Token =
   CloseBracket AlexPosn |
   OpenScope AlexPosn |
   CloseScope AlexPosn |
-  SemiColon AlexPosn     |
+  Semicolon AlexPosn     |
   PtrOp AlexPosn     |
   AdressOp AlexPosn     |
   If AlexPosn            |  
@@ -71,7 +74,9 @@ data Token =
   Var AlexPosn String    
   deriving (Eq,Show)
 
-main = do
-  s <- getContents
-  print (alexScanTokens s)
+getTokens fn = unsafePerformIO (getTokensAux fn)
+
+getTokensAux fn = do {fh <- openFile fn ReadMode;
+                      s <- hGetContents fh;
+                      return (alexScanTokens s)}
 }
