@@ -50,8 +50,8 @@ program = do
 
 stmts :: ParsecT [Token] [(Token,Token)] IO([Token])
 stmts = (do a <- stmt
-			b <- stmts
-			return (a ++ b)) <|> (return [])
+            b <- stmts
+            return (a ++ b)) <|> (return [])
 
 stmt :: ParsecT [Token] [(Token,Token)] IO([Token])
 stmt = do

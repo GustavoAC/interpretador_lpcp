@@ -21,7 +21,14 @@ tokens :-
   bool                                        { \p s -> TypeBoolean p }
   $digit+                                     { \p s -> IntLit p (read s) }
   ";"                                         { \p s -> Semicolon p}
-  (\=\=)|(\!\=)|(\<\=)|(\>\=)|(\&\&)|(\|\|)|(\<)|(\>)   { \p s -> BoolSym p s }
+  (\=\=)                                      { \p s -> SymBoolEq p s }
+  (\!\=)                                      { \p s -> SymBoolNotEq p s }
+  (\<\=)                                      { \p s -> SymBoolLessThanEq p s }
+  (\>\=)                                      { \p s -> SymBoolGreaterThanEq p s }
+  (\&\&)                                      { \p s -> SymBoolAnd p s }
+  (\|\|)                                      { \p s -> SymBoolOr p s }
+  (\<)                                        { \p s -> SymBoolLessThan p s }
+  (\>)                                        { \p s -> SymBoolGreaterThan p s }
   [\+\-\*\/\^]                            { \p s -> Sym p (head s) }
   \=                                              { \p s -> Attrib p }
   \(                                              { \p s -> OpenParenth p }
@@ -30,15 +37,15 @@ tokens :-
   \]                                              { \p s -> CloseBracket p }
   \{                                              { \p s -> OpenScope p }
   \}                                              { \p s -> CloseScope p }
-  \=\>                                          { \p s -> PtrOp p }
-  \$                                          { \p s -> AdressOp p }
+  \=\>                                          { \p s -> SymPtrOp p }
+  \$                                          { \p s -> SymAdressOp p }
   endfor                                          { \p s -> EndFor p }
   for                                          { \p s -> For p }
   endwhile                                          { \p s -> EndWhile p }
   while                                          { \p s -> While p }
   endif                                          { \p s -> EndIf p }
   if                                          { \p s -> If p }
-  $alpha [$alpha $digit \_ \']*               { \p s -> Var p s }
+  $alpha [$alpha $digit \_ \']*               { \p s -> Id p s }
   \" $alpha [$alpha $digit ! \_ \']* \"       { \p s -> StrLit p s }
 {
 -- Each right-hand side has type :: AlexPosn -> String -> Token
@@ -59,8 +66,8 @@ data Token =
   OpenScope AlexPosn |
   CloseScope AlexPosn |
   Semicolon AlexPosn     |
-  PtrOp AlexPosn     |
-  AdressOp AlexPosn     |
+  SymPtrOp AlexPosn     |
+  SymAdressOp AlexPosn     |
   If AlexPosn            |  
   EndIf AlexPosn            |  
   For AlexPosn            |  
@@ -70,8 +77,15 @@ data Token =
   IntLit AlexPosn Int    |
   StrLit AlexPosn String |
   Sym AlexPosn Char      |
-  BoolSym AlexPosn String |
-  Var AlexPosn String    
+  SymBoolEq AlexPosn String |
+  SymBoolNotEq AlexPosn String |
+  SymBoolLessThanEq AlexPosn String |
+  SymBoolGreaterThanEq AlexPosn String |
+  SymBoolAnd AlexPosn String |
+  SymBoolOr AlexPosn String |
+  SymBoolLessThan AlexPosn String |
+  SymBoolGreaterThan AlexPosn String |
+  Id AlexPosn String    
   deriving (Eq,Show)
 
 getTokens fn = unsafePerformIO (getTokensAux fn)
