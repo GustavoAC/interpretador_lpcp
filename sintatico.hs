@@ -32,6 +32,16 @@ typeBooleanToken = tokenPrim show update_pos get_token where
   get_token (TypeBoolean pos) = Just (TypeBoolean pos)
   get_token _                 = Nothing
 
+typeRealToken :: ParsecT [Token] st IO (Token)
+typeRealToken = tokenPrim show update_pos get_token where
+  get_token (TypeReal pos)    = Just (TypeReal pos)
+  get_token _                 = Nothing
+
+typeStringToken :: ParsecT [Token] st IO (Token)
+typeStringToken = tokenPrim show update_pos get_token where
+  get_token (TypeString pos)    = Just (TypeString pos)
+  get_token _                   = Nothing
+
 semicolonToken = tokenPrim show update_pos get_token where
   get_token (Semicolon pos) = Just (Semicolon pos)
   get_token _               = Nothing
