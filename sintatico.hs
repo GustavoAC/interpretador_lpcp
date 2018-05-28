@@ -6,6 +6,21 @@ import Control.Monad.IO.Class
 
 import System.IO.Unsafe
 
+data TokenTree = NonTToken NonTToken TokenTree TokenTree TokenTree TokenTree | Token Token | None deriving (Eq, Show)
+data NonTToken = 
+  NonTProgram |
+  NonTStatements |
+  NonTStatement |
+  NonTAssign |
+  NonTIf
+  deriving (Eq, Show)
+
+makeTree :: NonTToken -> TokenTree -> TokenTree -> TokenTree -> TokenTree -> TokenTree 
+makeTree tok a b c d = NonTToken tok a b c d
+
+makeToken :: Token -> TokenTree
+makeToken tok = Token tok
+
 -- parsers para os tokens
 typeIntToken :: ParsecT [Token] st IO (Token)
 typeIntToken = tokenPrim show update_pos get_token where
@@ -41,34 +56,34 @@ update_pos pos _ []      = pos
 -- Parsers não terminais
 
 --         Parsec   input       state         output
-program :: ParsecT [Token] [(Token,Token)] IO ([Token])
+program :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 program = do
             -- a <- funcDecs
             b <- stmts
             eof
-            return (b)
+            return (makeTree NonTProgram b None None None)
 
-stmts :: ParsecT [Token] [(Token,Token)] IO([Token])
+stmts :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 stmts = (do a <- stmt
-			b <- stmts
-			return (a ++ b)) <|> (return [])
+            b <- stmts
+            return (makeTree NonTStatements a b None None)) <|> (return None)
 
-stmt :: ParsecT [Token] [(Token,Token)] IO([Token])
+stmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 stmt = do
        first <- assign
        colon <- semicolonToken
-       return (first ++ [colon])
+       return (makeTree NonTStatement first None None None)
 
-assign :: ParsecT [Token] [(Token,Token)] IO([Token])
+assign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 assign = do
           a <- varToken
           b <- attribToken
-          c <- strLitToken -- mudar aqui
-          return (a:b:[c])
+          c <- strLitToken
+          return (makeTree NonTAssign (makeToken a) (makeToken b) (makeToken c) None)
 
 -- Main e função que chama o parser
 
-parser :: [Token] -> IO (Either ParseError [Token])
+parser :: [Token] -> IO (Either ParseError TokenTree)
 parser tokens = runParserT program [] "Error message" tokens
 
 main :: IO ()
