@@ -21,15 +21,19 @@ tokens :-
   bool                                        { \p s -> TypeBoolean p }
   $digit+                                     { \p s -> IntLit p (read s) }
   ";"                                         { \p s -> Semicolon p}
-  (\=\=)                                      { \p s -> SymBoolEq p s }
-  (\!\=)                                      { \p s -> SymBoolNotEq p s }
-  (\<\=)                                      { \p s -> SymBoolLessThanEq p s }
-  (\>\=)                                      { \p s -> SymBoolGreaterThanEq p s }
-  (\&\&)                                      { \p s -> SymBoolAnd p s }
-  (\|\|)                                      { \p s -> SymBoolOr p s }
-  (\<)                                        { \p s -> SymBoolLessThan p s }
-  (\>)                                        { \p s -> SymBoolGreaterThan p s }
-  [\+\-\*\/\^]                            { \p s -> Sym p (head s) }
+  \=\=                                      { \p s -> SymBoolEq p s }
+  \!\=                                      { \p s -> SymBoolNotEq p s }
+  \<\=                                      { \p s -> SymBoolLessThanEq p s }
+  \>\=                                      { \p s -> SymBoolGreaterThanEq p s }
+  \&\&                                      { \p s -> SymBoolAnd p s }
+  \|\|                                      { \p s -> SymBoolOr p s }
+  \<                                        { \p s -> SymBoolLessThan p s }
+  \>                                        { \p s -> SymBoolGreaterThan p s }
+  \+                                              { \p s -> SymOpPlus p (head s) }
+  \-                                              { \p s -> SymOpMinus p (head s) }
+  \*                                              { \p s -> SymOpMult p (head s) }
+  \/                                              { \p s -> SymOpDiv p (head s) }
+  \^                                              { \p s -> SymOpExp p (head s) }
   \=                                              { \p s -> Attrib p }
   \(                                              { \p s -> OpenParenth p }
   \)                                              { \p s -> CloseParenth p }
@@ -76,7 +80,11 @@ data Token =
   EndWhile AlexPosn            |  
   IntLit AlexPosn Int    |
   StrLit AlexPosn String |
-  Sym AlexPosn Char      |
+  SymOpPlus AlexPosn Char |
+  SymOpMinus AlexPosn Char |
+  SymOpMult AlexPosn Char |
+  SymOpDiv AlexPosn Char |
+  SymOpExp AlexPosn Char |
   SymBoolEq AlexPosn String |
   SymBoolNotEq AlexPosn String |
   SymBoolLessThanEq AlexPosn String |
