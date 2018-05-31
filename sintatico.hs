@@ -1,12 +1,15 @@
-module Main (main) where
+module Sintatico (TokenTree(..), NonTToken(..), parser) where
 
 import Lexico
 import Text.Parsec
 import Control.Monad.IO.Class
 
-import System.IO.Unsafe
-
-data TokenTree = NonTToken NonTToken TokenTree TokenTree TokenTree TokenTree | Token Token | None deriving (Eq, Show)
+data TokenTree = QuadTree NonTToken TokenTree TokenTree TokenTree TokenTree |
+                 TriTree NonTToken TokenTree TokenTree TokenTree |
+                 DualTree NonTToken TokenTree TokenTree |
+                 UniTree NonTToken TokenTree |
+                 None |
+                 LeafToken Token deriving (Eq, Show)
 data NonTToken = 
   NonTProgram |
   NonTStatements |
@@ -15,11 +18,8 @@ data NonTToken =
   NonTIf
   deriving (Eq, Show)
 
-makeTree :: NonTToken -> TokenTree -> TokenTree -> TokenTree -> TokenTree -> TokenTree 
-makeTree tok a b c d = NonTToken tok a b c d
-
 makeToken :: Token -> TokenTree
-makeToken tok = Token tok
+makeToken tok = LeafToken tok
 
 -- parsers para os tokens
 typeIntToken :: ParsecT [Token] st IO (Token)
@@ -32,10 +32,10 @@ typeBooleanToken = tokenPrim show update_pos get_token where
   get_token (TypeBoolean pos) = Just (TypeBoolean pos)
   get_token _                 = Nothing
 
-typeRealToken :: ParsecT [Token] st IO (Token)
-typeRealToken = tokenPrim show update_pos get_token where
-  get_token (TypeReal pos)    = Just (TypeReal pos)
-  get_token _                 = Nothing
+-- typeRealToken :: ParsecT [Token] st IO (Token)
+-- typeRealToken = tokenPrim show update_pos get_token where
+--   get_token (TypeReal pos)    = Just (TypeReal pos)
+--   get_token _                 = Nothing
 
 typeStringToken :: ParsecT [Token] st IO (Token)
 typeStringToken = tokenPrim show update_pos get_token where
@@ -50,8 +50,8 @@ attribToken = tokenPrim show update_pos get_token where
   get_token (Attrib pos) = Just (Attrib pos)
   get_token _            = Nothing
 
-varToken = tokenPrim show update_pos get_token where
-  get_token (Var pos x) = Just (Var pos x)
+idToken = tokenPrim show update_pos get_token where
+  get_token (Id pos x) = Just (Id pos x)
   get_token _           = Nothing
 
 strLitToken = tokenPrim show update_pos get_token where
@@ -71,33 +71,27 @@ program = do
             -- a <- funcDecs
             b <- stmts
             eof
-            return (makeTree NonTProgram b None None None)
+            return (UniTree NonTProgram b)
 
 stmts :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 stmts = (do a <- stmt
             b <- stmts
-            return (makeTree NonTStatements a b None None)) <|> (return None)
+            return (DualTree NonTStatements a b)) <|> (return None)
 
 stmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 stmt = do
        first <- assign
        colon <- semicolonToken
-       return (makeTree NonTStatement first None None None)
+       return (UniTree NonTStatement first)
 
 assign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 assign = do
-          a <- varToken
+          a <- idToken
           b <- attribToken
           c <- strLitToken
-          return (makeTree NonTAssign (makeToken a) (makeToken b) (makeToken c) None)
+          return (TriTree NonTAssign (makeToken a) (makeToken b) (makeToken c))
 
 -- Main e função que chama o parser
 
 parser :: [Token] -> IO (Either ParseError TokenTree)
 parser tokens = runParserT program [] "Error message" tokens
-
-main :: IO ()
-main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
-            { Left err -> print err; 
-              Right ans -> print ans
-            }
