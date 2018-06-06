@@ -4,12 +4,17 @@ import Lexico
 import System.IO.Unsafe
 
 
--- ListaDeStructs(nome [campos (nome typo)]) ListaDeFunções(Id TipodeRetorno Parâmetros BlocoDaFunção) ListadeEscopos ListaDeVariáveis(Id Tipo Valor Escopo)
+-- ListaDeStructs(nome [campos (nome typo)]) ListaDeProcedimentos(Id Parâmetros BlocoDaFunção) ListaDeFunções(Id TipodeRetorno Parâmetros BlocoDaFunção) ListadeEscopos ListaDeVariáveis(Id Tipo Valor Escopo)
 data State = State SymbolTable (IO ())
-data SymbolTable = SymbolTable [Struct] [Function] [String] Memory deriving (Eq, Show)
+data SymbolTable = SymbolTable [Struct] [Procedure] [Function] [String] Memory deriving (Eq, Show)
+data Procedure = Procedure String [Field] TokenTree deriving (Eq, Show)
 data Function = Function String Type [Field] TokenTree deriving (Eq, Show)
 data Struct = Struct String [Field] deriving (Eq, Show)
-data Field = Field Type String deriving (Eq, Show)
+data Field = Field Type String deriving (Show)
+-- Basta que os tipos sejam iguais para um field ser igual a outro.
+instance Eq Field where
+    (Field name1 type1) == (Field name2 type2) = (type1 == type2)
+
 data Memory = Memory [Variable] deriving (Eq, Show)
 data Variable = Variable String Type Value String deriving (Eq, Show)
 
@@ -29,7 +34,7 @@ data FieldInstance = FieldInstance Field Value deriving (Eq, Show)
 data IdLabelBeta = IdBaseBeta String | DereferenceOfBeta IdLabelBeta | AtIndexBeta IdLabelBeta Value
 
 emptyState :: State
-emptyState = State (SymbolTable [] [] [] (Memory [])) (return ())
+emptyState = State (SymbolTable [] [] [] [] (Memory [])) (return ())
 
 inicAnalisadorSemantico :: TokenTree -> IO()
 inicAnalisadorSemantico tree = getAnalisadorIO (analisadorSemantico tree emptyState)
@@ -66,6 +71,80 @@ analisadorSemantico (DualTree _ a b) st =
 analisadorSemantico (UniTree _ a) st = 
     analisadorSemantico a st
 analisadorSemantico (None) st = st
+
+-- TODO: TESTAR FAMÍLIA DE FUNÇÕES STARTPROCEDURE
+--       Trocar params de [String] pra [(Type, Value)] e avaliar por aqui
+--       Se cada valor passado é um id ou uma expressão.
+--                       procname    params
+startProcedure :: State -> String -> [(Type, Value)] -> State
+startProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) procName params =
+    finalState
+    where
+        -- acha o proc
+        (Procedure _ fields procTree) = findProc procs procName (fieldfy mem params oldScope)
+        -- instancia coisas do proc
+        newMem = instanciarParams mem params fields procName
+        -- executa o proc no analisadorSemantico
+        (State (SymbolTable _ _ _ _ (Memory procFinalMem)) finalIo) = analisadorSemantico procTree (State (SymbolTable structs procs funcs [procName] (Memory newMem)) io)
+        -- deletar coisas do escopo aqui
+        finalMem = cleanScopeFromMem procFinalMem procName
+        -- temp só pra compilar
+        finalState = (State (SymbolTable structs procs funcs oldScope (Memory finalMem)) finalIo)
+
+cleanScopeFromMem :: [Variable] -> String -> [Variable]
+cleanScopeFromMem [] _ = []
+cleanScopeFromMem ((Variable id typ val valEsc):mem) esc =
+    if valEsc == esc
+        then cleanScopeFromMem mem esc
+    else cleanScopeFromMem ((Variable id typ val valEsc):mem) esc
+
+-- TODO: Substituir os _ por NonTExpr
+-- Como funções podem ser chamadas de dentro de expressões e funções podem modificar o
+-- estado, então o estado todo tem que ser passado pra o avaliador de expr
+--                 estado    arvoreExpr   estadofinal e valor encontrado
+avaliarExpressao :: State -> TokenTree -> (State, (Type, Value))
+avaliarExpressao st tree = case tree of
+    UniTree nonT a -> case nonT of
+        _ -> case a of 
+            _ -> (st, (IntType, (Int 4)))
+    DualTree nonT a b -> case nonT of
+        _ -> case a of 
+            _ -> (st, (IntType, (Int 4)))
+    TriTree nonT a b c -> case nonT of
+        _ -> case b of 
+            (LeafToken (SymOpPlus _ _)) -> res
+            where
+                (st1, (type1, val1)) = avaliarExpressao st a
+                (st2, (type2, val2)) = avaliarExpressao st1 c
+                res = (st2, exprSum (type1, val1) (type2, val2))
+
+exprSum :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprSum (IntType, Int a) (IntType, Int b) = (IntType, Int (a + b))
+exprSum _ _ = error "Operação entre tipos não permitida"
+
+--                   memoria       params             campos    escopo    memoria atualizada
+instanciarParams :: [Variable] -> [(Type, Value)] -> [Field] -> String -> [Variable]
+instanciarParams mem ((typeValue, value):params) ((Field typeField id):fields) escopo = finalMem
+    where
+        nextMem = ((Variable id typeField value escopo):mem)
+        finalMem = (instanciarParams nextMem params fields escopo)
+instanciarParams mem [] [] _ = mem
+instanciarParams _ _ _ _ = error "Erro inesperado em instanciarParams"
+
+--          memory        params      scope
+fieldfy :: [Variable] -> [(Type, Value)] -> [String] -> [Field]
+fieldfy mem [] scope = []
+fieldfy mem ((t, v):params) scope = f:(fieldfy mem params scope)
+    where
+        f = Field t []
+
+--         procedimentos    nome      tipos
+findProc :: [Procedure] -> String -> [Field] -> Procedure
+findProc [] _ _ = error "Procedimento não declarado"
+findProc ((Procedure procName procFields tree):procs) tarName tarFields =
+    if procName == tarName && procFields == tarFields
+        then (Procedure procName procFields tree)
+    else findProc procs tarName tarFields
 
 
 -- TODO: NÃO TESTADA
@@ -208,10 +287,19 @@ lookUp (Memory mem) id escopo =
         Nothing -> error "Variável não declarada"
         Just res -> res
 
+--                memoria        id      escopo
 lookUpWrapper :: [Variable] -> String -> String -> Variable
 lookUpWrapper a b c = 
     case lookUpAux a b c of
         Nothing -> error "Variável não declarada"
+        Just res -> res
+
+--               memoria        id       escopo
+lookUpScoped :: [Variable] -> String -> [String] -> Variable
+lookUpScoped mem id [] = error "Variável não declarada"
+lookUpScoped mem id (currEsc:esc) = 
+    case lookUpAux mem id currEsc of
+        Nothing -> lookUpScoped mem id esc
         Just res -> res
 
 -- TODO: NÃO TESTADA
