@@ -16,7 +16,8 @@ data NonTToken =
   NonTStatement |
   NonTAssign |
   NonTIf |
-  NonTExpr
+  NonTExpr |
+  NonTInvokeFunction
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
@@ -286,7 +287,7 @@ assign = do
 expr0 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 expr0 =
   (do
-    -- &&
+    -- _ && _ | _ && (_) | (_) && _ | (_) && (_)
     a <- expr0
     meio <- symBoolAndToken
     b <- expr0
@@ -339,7 +340,7 @@ expr2 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
     ) <|> (
     -- <=
     do
-      a <- expr2
+        a <- expr2
       meio <- symBoolLessThanEqToken
       b <- expr2
       return (TriTree NonTExpr a (makeToken meio) b)
@@ -423,7 +424,7 @@ expr4 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
       a <- expr5
       return a 
     )
-
+ 
 -- ^
 expr5 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
   expr5 =
