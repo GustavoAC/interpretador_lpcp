@@ -19,21 +19,23 @@ tokens :-
   string                                      { \p s -> TypeString p }
   ptr                                         { \p s -> TypePointer p }
   bool                                        { \p s -> TypeBoolean p }
+  $digit+\.$digit+                            { \p s -> FloatLit p (read s) }
   $digit+                                     { \p s -> IntLit p (read s) }
   ";"                                         { \p s -> Semicolon p}
-  \=\=                                      { \p s -> SymBoolEq p s }
-  \!\=                                      { \p s -> SymBoolNotEq p s }
-  \<\=                                      { \p s -> SymBoolLessThanEq p s }
-  \>\=                                      { \p s -> SymBoolGreaterThanEq p s }
-  \&\&                                      { \p s -> SymBoolAnd p s }
-  \|\|                                      { \p s -> SymBoolOr p s }
-  \<                                        { \p s -> SymBoolLessThan p s }
-  \>                                        { \p s -> SymBoolGreaterThan p s }
-  \+                                              { \p s -> SymOpPlus p (head s) }
-  \-                                              { \p s -> SymOpMinus p (head s) }
-  \*                                              { \p s -> SymOpMult p (head s) }
-  \/                                              { \p s -> SymOpDiv p (head s) }
-  \^                                              { \p s -> SymOpExp p (head s) }
+  \=\=                                      { \p s -> SymBoolEq p }
+  \!\=                                      { \p s -> SymBoolNotEq p }
+  \<\=                                      { \p s -> SymBoolLessThanEq p }
+  \>\=                                      { \p s -> SymBoolGreaterThanEq p }
+  \&\&                                      { \p s -> SymBoolAnd p }
+  \|\|                                      { \p s -> SymBoolOr p }
+  \<                                        { \p s -> SymBoolLessThan p }
+  \>                                        { \p s -> SymBoolGreaterThan p }
+  \+                                              { \p s -> SymOpPlus p }
+  \-                                              { \p s -> SymOpMinus p }
+  \*                                              { \p s -> SymOpMult p }
+  \/                                              { \p s -> SymOpDiv p }
+  \^                                              { \p s -> SymOpExp p }
+  \%                                              { \p s -> SymOpMod p }
   \=                                              { \p s -> Attrib p }
   \(                                              { \p s -> OpenParenth p }
   \)                                              { \p s -> CloseParenth p }
@@ -41,14 +43,15 @@ tokens :-
   \]                                              { \p s -> CloseBracket p }
   \{                                              { \p s -> OpenScope p }
   \}                                              { \p s -> CloseScope p }
-  \=\>                                          { \p s -> SymPtrOp p }
-  \$                                          { \p s -> SymAdressOp p }
+  \=\>                                           { \p s -> SymPtrOp p }
+  \$                                             { \p s -> SymAdressOp p }
+  print                                         { \p s -> Print p }
   endfor                                          { \p s -> EndFor p }
-  for                                          { \p s -> For p }
-  endwhile                                          { \p s -> EndWhile p }
-  while                                          { \p s -> While p }
-  endif                                          { \p s -> EndIf p }
-  if                                          { \p s -> If p }
+  for                                             { \p s -> For p }
+  endwhile                                        { \p s -> EndWhile p }
+  while                                           { \p s -> While p }
+  endif                                           { \p s -> EndIf p }
+  if                                              { \p s -> If p }
   $alpha [$alpha $digit \_ \']*               { \p s -> Id p s }
   \" $alpha [$alpha $digit ! \_ \']* \"       { \p s -> StrLit p s }
 {
@@ -72,27 +75,30 @@ data Token =
   Semicolon AlexPosn     |
   SymPtrOp AlexPosn     |
   SymAdressOp AlexPosn     |
+  Print AlexPosn            | 
   If AlexPosn            |  
   EndIf AlexPosn            |  
   For AlexPosn            |  
   EndFor AlexPosn            |  
   While AlexPosn            |  
   EndWhile AlexPosn            |  
+  FloatLit AlexPosn Float    |
   IntLit AlexPosn Int    |
   StrLit AlexPosn String |
-  SymOpPlus AlexPosn Char |
-  SymOpMinus AlexPosn Char |
-  SymOpMult AlexPosn Char |
-  SymOpDiv AlexPosn Char |
-  SymOpExp AlexPosn Char |
-  SymBoolEq AlexPosn String |
-  SymBoolNotEq AlexPosn String |
-  SymBoolLessThanEq AlexPosn String |
-  SymBoolGreaterThanEq AlexPosn String |
-  SymBoolAnd AlexPosn String |
-  SymBoolOr AlexPosn String |
-  SymBoolLessThan AlexPosn String |
-  SymBoolGreaterThan AlexPosn String |
+  SymOpPlus AlexPosn |
+  SymOpMinus AlexPosn |
+  SymOpMult AlexPosn |
+  SymOpDiv AlexPosn |
+  SymOpExp AlexPosn |
+  SymOpMod AlexPosn |
+  SymBoolEq AlexPosn |
+  SymBoolNotEq AlexPosn |
+  SymBoolLessThanEq AlexPosn |
+  SymBoolGreaterThanEq AlexPosn |
+  SymBoolAnd AlexPosn |
+  SymBoolOr AlexPosn |
+  SymBoolLessThan AlexPosn |
+  SymBoolGreaterThan AlexPosn |
   Id AlexPosn String    
   deriving (Eq,Show)
 
