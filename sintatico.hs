@@ -15,48 +15,240 @@ data NonTToken =
   NonTStatements |
   NonTStatement |
   NonTAssign |
-  NonTIf
+  NonTIf |
+  NonTExpr |
+  NonTInvokeFunction
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
 makeToken tok = LeafToken tok
 
 -- parsers para os tokens
+
+--
+-- Tipos
+--
 typeIntToken :: ParsecT [Token] st IO (Token)
 typeIntToken = tokenPrim show update_pos get_token where
   get_token (TypeInt pos) = Just (TypeInt pos)
   get_token _             = Nothing
 
-typeBooleanToken :: ParsecT [Token] st IO (Token)
-typeBooleanToken = tokenPrim show update_pos get_token where
-  get_token (TypeBoolean pos) = Just (TypeBoolean pos)
+typeFloatToken :: ParsecT [Token] st IO (Token)
+typeFloatToken = tokenPrim show update_pos get_token where
+  get_token (TypeFloat pos)   = Just (TypeFloat pos)
   get_token _                 = Nothing
-
--- typeRealToken :: ParsecT [Token] st IO (Token)
--- typeRealToken = tokenPrim show update_pos get_token where
---   get_token (TypeReal pos)    = Just (TypeReal pos)
---   get_token _                 = Nothing
 
 typeStringToken :: ParsecT [Token] st IO (Token)
 typeStringToken = tokenPrim show update_pos get_token where
   get_token (TypeString pos)    = Just (TypeString pos)
   get_token _                   = Nothing
 
-semicolonToken = tokenPrim show update_pos get_token where
-  get_token (Semicolon pos) = Just (Semicolon pos)
-  get_token _               = Nothing
+typePointerToken :: ParsecT [Token] st IO (Token)
+typePointerToken = tokenPrim show update_pos get_token where
+  get_token (TypePointer pos)   = Just (TypePointer pos)
+  get_token _                   = Nothing
 
-attribToken = tokenPrim show update_pos get_token where
-  get_token (Attrib pos) = Just (Attrib pos)
-  get_token _            = Nothing
+typeBooleanToken :: ParsecT [Token] st IO (Token)
+typeBooleanToken = tokenPrim show update_pos get_token where
+  get_token (TypeBoolean pos) = Just (TypeBoolean pos)
+  get_token _                 = Nothing
 
+-- 
+-- Literais
+-- 
+
+idToken :: ParsecT [Token] st IO (Token)
 idToken = tokenPrim show update_pos get_token where
   get_token (Id pos x) = Just (Id pos x)
   get_token _           = Nothing
 
+intLitToken :: ParsecT [Token] st IO (Token)
+intLitToken = tokenPrim show update_pos get_token where
+  get_token (IntLit pos x)      = Just (IntLit pos x)
+  get_token _                 = Nothing
+  
+floatLitToken :: ParsecT [Token] st IO (Token)
+floatLitToken = tokenPrim show update_pos get_token where
+  get_token (FloatLit pos x)    = Just (FloatLit pos x)
+  get_token _                 = Nothing
+
+strLitToken :: ParsecT [Token] st IO (Token)
 strLitToken = tokenPrim show update_pos get_token where
   get_token (StrLit pos x) = Just (StrLit pos x)
   get_token _              = Nothing
+
+-- 
+-- Símbolos Booleanos
+-- 
+symBoolEqToken :: ParsecT [Token] st IO (Token)
+symBoolEqToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolEq pos)   = Just (SymBoolEq pos)
+  get_token _                 = Nothing
+
+symBoolNotEqToken :: ParsecT [Token] st IO (Token)
+symBoolNotEqToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolNotEq pos) = Just (SymBoolNotEq pos)
+  get_token _                  = Nothing
+
+symBoolLessThanEqToken :: ParsecT [Token] st IO (Token)
+symBoolLessThanEqToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolLessThanEq pos) = Just (SymBoolLessThanEq pos)
+  get_token _                       = Nothing
+
+symBoolGreaterThanEqToken :: ParsecT [Token] st IO (Token)
+symBoolGreaterThanEqToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolGreaterThanEq pos) = Just (SymBoolGreaterThanEq pos)
+  get_token _                          = Nothing
+
+symBoolAndToken :: ParsecT [Token] st IO (Token)
+symBoolAndToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolAnd pos) = Just (SymBoolAnd pos)
+  get_token _                = Nothing
+
+symBoolOrToken :: ParsecT [Token] st IO (Token)
+symBoolOrToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolOr pos) = Just (SymBoolOr pos)
+  get_token _               = Nothing
+
+symBoolLessThanToken :: ParsecT [Token] st IO (Token)
+symBoolLessThanToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolLessThan pos) = Just (SymBoolLessThan pos)
+  get_token _                     = Nothing
+
+symBoolGreaterThanToken :: ParsecT [Token] st IO (Token)
+symBoolGreaterThanToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolGreaterThan pos) = Just (SymBoolGreaterThan pos)
+  get_token _                        = Nothing
+
+--
+-- Símbolos de operações
+--
+symOpPlusToken :: ParsecT [Token] st IO (Token)
+symOpPlusToken = tokenPrim show update_pos get_token where
+  get_token (SymOpPlus pos) = Just (SymOpPlus pos)
+  get_token _               = Nothing
+
+symOpMinusToken :: ParsecT [Token] st IO (Token)
+symOpMinusToken = tokenPrim show update_pos get_token where
+  get_token (SymOpMinus pos) = Just (SymOpMinus pos)
+  get_token _                = Nothing
+
+symOpMultToken :: ParsecT [Token] st IO (Token)
+symOpMultToken = tokenPrim show update_pos get_token where
+  get_token (SymOpMult pos) = Just (SymOpMult pos)
+  get_token _               = Nothing
+
+symOpDivToken :: ParsecT [Token] st IO (Token)
+symOpDivToken = tokenPrim show update_pos get_token where
+  get_token (SymOpDiv pos)  = Just (SymOpDiv pos)
+  get_token _               = Nothing
+
+symOpExpToken :: ParsecT [Token] st IO (Token)
+symOpExpToken = tokenPrim show update_pos get_token where
+  get_token (SymOpExp pos)  = Just (SymOpExp pos)
+  get_token _               = Nothing
+
+symOpModToken :: ParsecT [Token] st IO (Token)
+symOpModToken = tokenPrim show update_pos get_token where
+  get_token (SymOpMod pos)  = Just (SymOpMod pos)
+  get_token _               = Nothing
+
+--
+-- Brackets e afins
+--
+openParenthToken :: ParsecT [Token] st IO (Token)
+openParenthToken = tokenPrim show update_pos get_token where
+  get_token (OpenParenth pos) = Just (OpenParenth pos)
+  get_token _                 = Nothing
+
+closeParenthToken :: ParsecT [Token] st IO (Token)
+closeParenthToken = tokenPrim show update_pos get_token where
+  get_token (CloseParenth pos) = Just (CloseParenth pos)
+  get_token _                  = Nothing
+
+openBracketToken :: ParsecT [Token] st IO (Token)
+openBracketToken = tokenPrim show update_pos get_token where
+  get_token (OpenBracket pos) = Just (OpenBracket pos)
+  get_token _                 = Nothing
+
+closeBracketToken :: ParsecT [Token] st IO (Token)
+closeBracketToken = tokenPrim show update_pos get_token where
+  get_token (CloseBracket pos) = Just (CloseBracket pos)
+  get_token _                  = Nothing
+
+openScopeToken :: ParsecT [Token] st IO (Token)
+openScopeToken = tokenPrim show update_pos get_token where
+  get_token (OpenScope pos) = Just (OpenScope pos)
+  get_token _               = Nothing
+
+closeScopeToken :: ParsecT [Token] st IO (Token)
+closeScopeToken = tokenPrim show update_pos get_token where
+  get_token (CloseScope pos) = Just (CloseScope pos)
+  get_token _                = Nothing
+
+--
+-- Ponteiro e endereçamento
+--
+symPtrOpToken :: ParsecT [Token] st IO (Token)
+symPtrOpToken = tokenPrim show update_pos get_token where
+  get_token (SymPtrOp pos) = Just (SymPtrOp pos)
+  get_token _                = Nothing
+
+symAdressOpToken :: ParsecT [Token] st IO (Token)
+symAdressOpToken = tokenPrim show update_pos get_token where
+  get_token (SymAdressOp pos) = Just (SymAdressOp pos)
+  get_token _                = Nothing
+
+--
+-- Estruturas de controle
+--
+forToken :: ParsecT [Token] st IO (Token)
+forToken = tokenPrim show update_pos get_token where
+  get_token (For pos) = Just (For pos)
+  get_token _         = Nothing
+
+endForToken :: ParsecT [Token] st IO (Token)
+endForToken = tokenPrim show update_pos get_token where
+  get_token (EndFor pos) = Just (EndFor pos)
+  get_token _            = Nothing
+
+whileToken :: ParsecT [Token] st IO (Token)
+whileToken = tokenPrim show update_pos get_token where
+  get_token (While pos) = Just (While pos)
+  get_token _           = Nothing
+
+endWhileToken :: ParsecT [Token] st IO (Token)
+endWhileToken = tokenPrim show update_pos get_token where
+  get_token (EndWhile pos) = Just (EndWhile pos)
+  get_token _              = Nothing
+
+ifToken :: ParsecT [Token] st IO (Token)
+ifToken = tokenPrim show update_pos get_token where
+  get_token (If pos) = Just (If pos)
+  get_token _           = Nothing
+
+endIfToken :: ParsecT [Token] st IO (Token)
+endIfToken = tokenPrim show update_pos get_token where
+  get_token (EndIf pos) = Just (EndIf pos)
+  get_token _              = Nothing
+
+--
+-- Statements
+--
+semicolonToken :: ParsecT [Token] st IO (Token)
+semicolonToken = tokenPrim show update_pos get_token where
+  get_token (Semicolon pos) = Just (Semicolon pos)
+  get_token _               = Nothing
+
+attribToken :: ParsecT [Token] st IO (Token)
+attribToken = tokenPrim show update_pos get_token where
+  get_token (Attrib pos) = Just (Attrib pos)
+  get_token _            = Nothing
+
+printToken :: ParsecT [Token] st IO (Token)
+printToken = tokenPrim show update_pos get_token where
+  get_token (Print pos) = Just (Print pos)
+  get_token _            = Nothing
 
 -- O que ele quis dizer com isso?
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos
@@ -88,8 +280,210 @@ assign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 assign = do
           a <- idToken
           b <- attribToken
-          c <- strLitToken
+          c <- expr0
           return (TriTree NonTAssign (makeToken a) (makeToken b) (makeToken c))
+
+-- &&  ||
+expr0 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+expr0 =
+  (do
+    -- _ && _ | _ && (_) | (_) && _ | (_) && (_)
+    a <- expr0
+    meio <- symBoolAndToken
+    b <- expr0
+    return (TriTree NonTExpr a (makeToken meio) b)
+  ) <|> (
+  do
+    -- ||
+    a <- expr0
+    meio <- symBoolOrToken
+    b <- expr0
+    return (TriTree NonTExpr a (makeToken meio) b)
+  ) <|> (
+  do
+    a <- expr1
+    return a
+  )
+
+-- !
+expr1 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+  expr1 =
+    (
+    do
+      -- !
+      a <- symBoolNotToken
+      b <- expr1
+      return (DualTree NonTExpr (makeToken a) b)
+    ) <|> (
+    do 
+      a <- expr2
+      return a
+    )
+
+-- <  >  <=  >=  ==  !=
+expr2 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+  expr2 =
+    ( 
+    -- <
+    do 
+      a <- expr2
+      meio <- symBoolLessThanToken
+      b <- expr2
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+    -- >
+    do
+      a <- expr2
+      meio <- symBoolGreaterThanToken
+      b <- expr2
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+    -- <=
+    do
+        a <- expr2
+      meio <- symBoolLessThanEqToken
+      b <- expr2
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+    -- >=
+    do
+      a <- expr2
+      meio <- symBoolGreaterThanEqToken
+      b <- expr2
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+    -- ==
+    do
+      a <- expr2
+      meio <- symBoolEqToken
+      b <- expr2
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+    -- !=
+    do  
+      a <- expr2
+      meio <- symBoolNotEqToken
+      b <- expr2
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+      do
+        a <- expr3
+        return a
+    )
+
+-- +  -
+expr3 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+  expr3 =
+    (
+    -- +
+    do
+      a <- expr3
+      meio <- symOpPlusToken
+      b <- expr3
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+    -- -
+    do
+      a <- expr3
+      meio <- symOpMinusToken
+      b <- expr3
+      return (TriTree NonTExpr a (makeToken meio) b)
+    do
+    ) <|> (
+    do
+      a <- expr4
+      return a
+    )
+
+-- *  /  %
+expr4 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+  expr4 =
+    (
+    -- *
+    do
+      a <- expr4
+      meio <- symOpMultToken
+      b <- expr4
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+    -- /
+    do
+      a -> expr4
+      meio <- symOpDivToken
+      b <- expr4
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+    -- %
+    do
+      a -> expr4
+      meio <- symOpModToken
+      b <- expr4
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+    do 
+      a <- expr5
+      return a 
+    )
+ 
+-- ^
+expr5 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+  expr5 =
+    (
+    -- ^
+    do
+      a <- expr5
+      meio <- symOpExpToken
+      b <- expr5
+      return (TriTree NonTExpr a (makeToken meio) b)
+    ) <|> (
+    do
+      a <- expr6
+      return a
+    )
+
+-- function
+expr6 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+  expr6 =
+    (
+    -- function
+    do
+      a <- exprFunction
+      return (UniTree NonTInvokeFunction a)
+    ) <|> (
+    do
+      a <- expr7
+      return a
+    )
+
+-- id  literal
+expr7 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+  expr7 =
+    (
+    -- id
+    do
+      a <- exprId
+      return (UniTree NonTId a)
+    ) <|> (
+    -- lit
+      a <- strLitToken
+      return (LeafToken a)
+    ) <|> (
+    do
+      a <- exprFinal
+      return a
+    )
+
+-- ( )
+exprFinal :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+  exprFinal =
+    (
+    -- ( )
+    do
+      a <- openParenthToken
+      meio <- expr0
+      b <- closeParenthToken
+      return (UniTree NonTExpr meio)
+    )
 
 -- Main e função que chama o parser
 
