@@ -1,8 +1,11 @@
-module Sintatico (TokenTree(..), NonTToken(..), parser) where
+-- Comente para executar o main local
+--module Sintatico (TokenTree(..), NonTToken(..), parser) where
 
 import Lexico
 import Text.Parsec
 import Control.Monad.IO.Class
+
+import System.IO.Unsafe
 
 data TokenTree = QuadTree NonTToken TokenTree TokenTree TokenTree TokenTree |
                  TriTree NonTToken TokenTree TokenTree TokenTree |
@@ -17,7 +20,8 @@ data NonTToken =
   NonTAssign |
   NonTIf |
   NonTExpr |
-  NonTInvokeFunction
+  NonTInvokeFunction |
+  NonTId
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
@@ -56,7 +60,6 @@ typeBooleanToken = tokenPrim show update_pos get_token where
 -- 
 -- Literais
 -- 
-
 idToken :: ParsecT [Token] st IO (Token)
 idToken = tokenPrim show update_pos get_token where
   get_token (Id pos x) = Just (Id pos x)
@@ -80,6 +83,31 @@ strLitToken = tokenPrim show update_pos get_token where
 -- 
 -- Símbolos Booleanos
 -- 
+symBoolNotToken :: ParsecT [Token] st IO (Token)
+symBoolNotToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolNot pos) = Just (SymBoolNot pos)
+  get_token _                = Nothing
+
+symBoolAndToken :: ParsecT [Token] st IO (Token)
+symBoolAndToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolAnd pos) = Just (SymBoolAnd pos)
+  get_token _                = Nothing
+
+symBoolOrToken :: ParsecT [Token] st IO (Token)
+symBoolOrToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolOr pos) = Just (SymBoolOr pos)
+  get_token _               = Nothing
+
+symBoolTrueToken :: ParsecT [Token] st IO (Token)
+symBoolTrueToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolTrue pos) = Just (SymBoolTrue pos)
+  get_token _                = Nothing
+
+symBoolFalseToken :: ParsecT [Token] st IO (Token)
+symBoolFalseToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolFalse pos) = Just (SymBoolFalse pos)
+  get_token _                = Nothing
+
 symBoolEqToken :: ParsecT [Token] st IO (Token)
 symBoolEqToken = tokenPrim show update_pos get_token where
   get_token (SymBoolEq pos)   = Just (SymBoolEq pos)
@@ -99,16 +127,6 @@ symBoolGreaterThanEqToken :: ParsecT [Token] st IO (Token)
 symBoolGreaterThanEqToken = tokenPrim show update_pos get_token where
   get_token (SymBoolGreaterThanEq pos) = Just (SymBoolGreaterThanEq pos)
   get_token _                          = Nothing
-
-symBoolAndToken :: ParsecT [Token] st IO (Token)
-symBoolAndToken = tokenPrim show update_pos get_token where
-  get_token (SymBoolAnd pos) = Just (SymBoolAnd pos)
-  get_token _                = Nothing
-
-symBoolOrToken :: ParsecT [Token] st IO (Token)
-symBoolOrToken = tokenPrim show update_pos get_token where
-  get_token (SymBoolOr pos) = Just (SymBoolOr pos)
-  get_token _               = Nothing
 
 symBoolLessThanToken :: ParsecT [Token] st IO (Token)
 symBoolLessThanToken = tokenPrim show update_pos get_token where
@@ -232,6 +250,21 @@ endIfToken = tokenPrim show update_pos get_token where
   get_token (EndIf pos) = Just (EndIf pos)
   get_token _              = Nothing
 
+returnToken :: ParsecT [Token] st IO (Token)
+returnToken = tokenPrim show update_pos get_token where
+  get_token (Return pos) = Just (Return pos)
+  get_token _              = Nothing
+
+breakToken :: ParsecT [Token] st IO (Token)
+breakToken = tokenPrim show update_pos get_token where
+  get_token (Break pos) = Just (Break pos)
+  get_token _              = Nothing
+
+continueToken :: ParsecT [Token] st IO (Token)
+continueToken = tokenPrim show update_pos get_token where
+  get_token (Continue pos) = Just (Continue pos)
+  get_token _              = Nothing
+
 --
 -- Statements
 --
@@ -247,8 +280,19 @@ attribToken = tokenPrim show update_pos get_token where
 
 printToken :: ParsecT [Token] st IO (Token)
 printToken = tokenPrim show update_pos get_token where
-  get_token (Print pos) = Just (Print pos)
+  get_token (Print pos)  = Just (Print pos)
   get_token _            = Nothing
+
+procedureToken :: ParsecT [Token] st IO (Token)
+procedureToken = tokenPrim show update_pos get_token where
+  get_token (Procedure pos) = Just (Procedure pos)
+  get_token _               = Nothing
+
+functionToken :: ParsecT [Token] st IO (Token)
+functionToken = tokenPrim show update_pos get_token where
+  get_token (Function pos) = Just (Function pos)
+  get_token _              = Nothing
+
 
 -- O que ele quis dizer com isso?
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos
@@ -266,9 +310,16 @@ program = do
             return (UniTree NonTProgram b)
 
 stmts :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-stmts = (do a <- stmt
-            b <- stmts
-            return (DualTree NonTStatements a b)) <|> (return None)
+stmts = try (
+  do
+    a <- stmt
+    b <- stmts
+    return (DualTree NonTStatements a b)
+  ) <|> (
+  do
+    a <- stmt
+    return (UniTree NonTStatement a)
+  )
 
 stmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 stmt = do
@@ -281,8 +332,8 @@ assign = do
           a <- idToken
           b <- attribToken
           c <- expr0
-          return (TriTree NonTAssign (makeToken a) (makeToken b) (makeToken c))
-
+          return (TriTree NonTAssign (makeToken a) (makeToken b) c)
+{-
 -- Função
 exprFunction :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 exprFunction = 
@@ -323,210 +374,262 @@ exprId =
     a <- idToken
     return (LeafToken a)
   )
+-}
 
 -- &&  ||
 expr0 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-expr0 =
-  (do
-    -- _ && _ | _ && (_) | (_) && _ | (_) && (_)
-    a <- expr0
-    meio <- symBoolAndToken
-    b <- expr0
-    return (TriTree NonTExpr a (makeToken meio) b)
-  ) <|> (
+expr0 = try (
   do
-    -- ||
-    a <- expr0
-    meio <- symBoolOrToken
+    a <- openParenthToken
+    meioParent <- expr0
+    b <- closeParenthToken
+    meio <- expr0Ops
+    c <- expr0
+    return (TriTree NonTExpr meioParent meio c)
+  ) <|> try (
+  do
+    a <- expr1
+    meio <- expr0Ops
     b <- expr0
-    return (TriTree NonTExpr a (makeToken meio) b)
-  ) <|> (
+    return (TriTree NonTExpr a meio b)
+  ) <|> try (
   do
     a <- expr1
     return a
   )
 
+expr0Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+expr0Ops = 
+  (do 
+    sym <- symBoolAndToken
+    return (makeToken sym)
+  ) <|> (do
+    sym <- symBoolOrToken
+    return (makeToken sym)
+  )
+
 -- !
 expr1 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-  expr1 =
-    (
-    do
-      -- !
-      a <- symBoolNotToken
-      b <- expr1
-      return (DualTree NonTExpr (makeToken a) b)
-    ) <|> (
-    do 
-      a <- expr2
-      return a
-    )
+expr1 = try (
+  do
+    meio <- expr1Ops
+    c <- expr1
+    return (DualTree NonTExpr meio c)
+  ) <|> try (
+  do
+    a <- expr2
+    return a
+  )
+
+expr1Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+expr1Ops = 
+  (do
+    sym <- symBoolNotToken
+    return (makeToken sym)
+  )
 
 -- <  >  <=  >=  ==  !=
 expr2 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-  expr2 =
-    ( 
-    -- <
-    do 
-      a <- expr2
-      meio <- symBoolLessThanToken
-      b <- expr2
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-    -- >
-    do
-      a <- expr2
-      meio <- symBoolGreaterThanToken
-      b <- expr2
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-    -- <=
-    do
-        a <- expr2
-      meio <- symBoolLessThanEqToken
-      b <- expr2
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-    -- >=
-    do
-      a <- expr2
-      meio <- symBoolGreaterThanEqToken
-      b <- expr2
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-    -- ==
-    do
-      a <- expr2
-      meio <- symBoolEqToken
-      b <- expr2
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-    -- !=
-    do  
-      a <- expr2
-      meio <- symBoolNotEqToken
-      b <- expr2
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-      do
-        a <- expr3
-        return a
-    )
+expr2 = try (
+  do
+    a <- openParenthToken
+    meioParent <- expr0
+    b <- closeParenthToken
+    meio <- expr2Ops
+    c <- expr2
+    return (TriTree NonTExpr meioParent meio c)
+  ) <|> try (
+  do
+    a <- expr3
+    meio <- expr2Ops
+    b <- expr2
+    return (TriTree NonTExpr a meio b)
+  ) <|> (
+  do
+    a <- expr3
+    return a
+  )
+
+expr2Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+expr2Ops = 
+  (do
+    sym <- symBoolLessThanToken
+    return (makeToken sym)
+  ) <|> (do
+    sym <- symBoolGreaterThanToken
+    return (makeToken sym)
+  ) <|> (do
+    sym <- symBoolLessThanEqToken
+    return (makeToken sym)
+  ) <|> (do
+    sym <- symBoolGreaterThanEqToken
+    return (makeToken sym)
+  ) <|> (do
+    sym <- symBoolEqToken
+    return (makeToken sym)
+  ) <|> (do
+    sym <- symBoolNotEqToken
+    return (makeToken sym)
+  )
 
 -- +  -
 expr3 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-  expr3 =
-    (
-    -- +
-    do
-      a <- expr3
-      meio <- symOpPlusToken
-      b <- expr3
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-    -- -
-    do
-      a <- expr3
-      meio <- symOpMinusToken
-      b <- expr3
-      return (TriTree NonTExpr a (makeToken meio) b)
-    do
-    ) <|> (
-    do
-      a <- expr4
-      return a
-    )
+expr3 = try (
+  do
+    a <- openParenthToken
+    meioParent <- expr0
+    b <- closeParenthToken
+    meio <- expr3Ops
+    c <- expr3
+    return (TriTree NonTExpr meioParent meio c)
+  ) <|> try (
+  do
+    a <- expr4
+    meio <- expr3Ops
+    b <- expr3
+    return (TriTree NonTExpr a meio b)
+  ) <|> (
+  do
+    a <- expr4
+    return a
+  )
+
+expr3Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+expr3Ops = (do
+    sym <- symOpPlusToken
+    return (makeToken sym)
+  ) <|> (do
+    sym <- symOpMinusToken
+    return (makeToken sym)
+  )
 
 -- *  /  %
 expr4 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-  expr4 =
-    (
-    -- *
-    do
-      a <- expr4
-      meio <- symOpMultToken
-      b <- expr4
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-    -- /
-    do
-      a -> expr4
-      meio <- symOpDivToken
-      b <- expr4
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-    -- %
-    do
-      a -> expr4
-      meio <- symOpModToken
-      b <- expr4
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-    do 
-      a <- expr5
-      return a 
-    )
+expr4 = try (
+  do
+    a <- openParenthToken
+    meioParent <- expr0
+    b <- closeParenthToken
+    meio <- expr4Ops
+    c <- expr4
+    return (TriTree NonTExpr meioParent meio c)
+  ) <|> try (
+  do
+    a <- expr5
+    meio <- expr4Ops
+    b <- expr4
+    return (TriTree NonTExpr a meio b)
+  ) <|> (
+  do
+    a <- expr5
+    return a
+  )
  
+expr4Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+expr4Ops = (do
+    sym <- symOpMultToken
+    return (makeToken sym)
+  ) <|> (do
+    sym <- symOpDivToken
+    return (makeToken sym)
+  ) <|> (do
+    sym <- symOpModToken
+    return (makeToken sym)
+  )
+
+
 -- ^
 expr5 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-  expr5 =
-    (
-    -- ^
-    do
-      a <- expr5
-      meio <- symOpExpToken
-      b <- expr5
-      return (TriTree NonTExpr a (makeToken meio) b)
-    ) <|> (
-    do
-      a <- expr6
-      return a
-    )
+expr5 = try (
+  do
+    a <- openParenthToken
+    meioParent <- expr0
+    b <- closeParenthToken
+    meio <- expr5Ops
+    c <- expr5
+    return (TriTree NonTExpr meioParent meio c)
+  ) <|> try (
+  do
+    a <- exprParenth
+    meio <- expr5Ops
+    b <- expr5
+    return (TriTree NonTExpr a meio b)
+  ) <|> (
+  do
+    a <- exprParenth
+    return a
+  )
 
--- function
-expr6 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-  expr6 =
-    (
-    -- function
-    do
-      a <- exprFunction
-      return (UniTree NonTInvokeFunction a)
-    ) <|> (
-    do
-      a <- expr7
-      return a
-    )
-
--- id  literal
-expr7 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-  expr7 =
-    (
-    -- id
-    do
-      a <- exprId -- TO DO
-      return (UniTree NonTId a)
-    ) <|> (
-    -- lit
-      a <- strLitToken
-      return (LeafToken a)
-    ) <|> (
-    do
-      a <- exprFinal
-      return a
-    )
+expr5Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+expr5Ops = (do
+    sym <- symOpExpToken
+    return (makeToken sym)
+  )
 
 -- ( )
-exprFinal :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-  exprFinal =
-    (
-    -- ( )
+exprParenth :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+exprParenth = try (
+  -- ( )
+  do
+    a <- openParenthToken
+    meio <- expr0
+    b <- closeParenthToken
+    return meio
+  ) <|> (
     do
-      a <- openParenthToken
-      meio <- expr0
-      b <- closeParenthToken
-      return (UniTree NonTExpr meio)
-    )
+      a <- exprFinalIds
+      return a
+  ) 
+
+-- function, ids e literis
+exprFinalIds :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+exprFinalIds = try (
+  -- function
+  do
+    a <- exprFunction
+    return (UniTree NonTInvokeFunction a)
+  ) <|> try (
+  -- id
+  do
+    a <- exprId
+    return (UniTree NonTId a)
+  ) <|> try (
+  -- strlit
+  do
+    a <- strLitToken
+    return (LeafToken a)
+  ) <|> try (
+  -- floatlit
+  do
+    a <- floatLitToken
+    return (LeafToken a)
+  ) <|> (
+  -- intlit
+  do
+    a <- intLitToken
+    return (LeafToken a)
+  )
+
+-- Todo: Propriamente pegar os ids de função
+exprFunction :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+exprFunction = do
+  a <- idToken
+  return (makeToken a)
+
+-- Todo: Propriamente pegar os ids de Id (ponteiro e array)
+exprId :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+exprId = do
+  a <- idToken
+  return (makeToken a)
 
 -- Main e função que chama o parser
 
 parser :: [Token] -> IO (Either ParseError TokenTree)
 parser tokens = runParserT program [] "Error message" tokens
+
+-- Descomente para usar o main local
+main :: IO ()
+main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
+            { Left err -> print err; 
+              Right ans -> print ans
+            }

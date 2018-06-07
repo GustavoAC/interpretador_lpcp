@@ -26,8 +26,11 @@ tokens :-
   \!\=                                      { \p s -> SymBoolNotEq p }
   \<\=                                      { \p s -> SymBoolLessThanEq p }
   \>\=                                      { \p s -> SymBoolGreaterThanEq p }
+  \!                                        { \p s -> SymBoolNot p }
   \&\&                                      { \p s -> SymBoolAnd p }
   \|\|                                      { \p s -> SymBoolOr p }
+  true                                      { \p s -> SymBoolTrue p }
+  false                                     { \p s -> SymBoolFalse p }
   \<                                        { \p s -> SymBoolLessThan p }
   \>                                        { \p s -> SymBoolGreaterThan p }
   \+                                              { \p s -> SymOpPlus p }
@@ -52,6 +55,11 @@ tokens :-
   while                                           { \p s -> While p }
   endif                                           { \p s -> EndIf p }
   if                                              { \p s -> If p }
+  procedure                                       { \p s -> Procedure p }
+  function                                        { \p s -> Function p }
+  return                                          { \p s -> Return p }
+  break                                           { \p s -> Break p }
+  continue                                        { \p s -> Continue p }
   $alpha [$alpha $digit \_ \']*               { \p s -> Id p s }
   \" $alpha [$alpha $digit ! \_ \']* \"       { \p s -> StrLit p s }
 {
@@ -82,9 +90,14 @@ data Token =
   EndFor AlexPosn            |  
   While AlexPosn            |  
   EndWhile AlexPosn            |  
-  FloatLit AlexPosn Float    |
-  IntLit AlexPosn Int    |
-  StrLit AlexPosn String |
+  Procedure AlexPosn               |
+  Function AlexPosn                |
+  Return AlexPosn                  |
+  Break AlexPosn                   |
+  Continue AlexPosn                |
+  FloatLit AlexPosn Float |
+  IntLit AlexPosn Int     |
+  StrLit AlexPosn String  |
   SymOpPlus AlexPosn |
   SymOpMinus AlexPosn |
   SymOpMult AlexPosn |
@@ -95,8 +108,11 @@ data Token =
   SymBoolNotEq AlexPosn |
   SymBoolLessThanEq AlexPosn |
   SymBoolGreaterThanEq AlexPosn |
+  SymBoolNot AlexPosn |
   SymBoolAnd AlexPosn |
   SymBoolOr AlexPosn |
+  SymBoolTrue AlexPosn |
+  SymBoolFalse AlexPosn |
   SymBoolLessThan AlexPosn |
   SymBoolGreaterThan AlexPosn |
   Id AlexPosn String    
