@@ -90,11 +90,11 @@ data Token =
   EndFor AlexPosn            |  
   While AlexPosn            |  
   EndWhile AlexPosn            |  
-  Procedure p                |
-  Function p                 |
-  Return p                   |
-  Break p                    |
-  Continue p                 |
+  Procedure AlexPosn               |
+  Function AlexPosn                |
+  Return AlexPosn                  |
+  Break AlexPosn                   |
+  Continue AlexPosn                |
   FloatLit AlexPosn Float |
   IntLit AlexPosn Int     |
   StrLit AlexPosn String  |
