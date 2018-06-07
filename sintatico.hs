@@ -1,5 +1,5 @@
 -- Comente para executar o main local
---module Sintatico (TokenTree(..), NonTToken(..), parser) where
+module Sintatico (TokenTree(..), NonTToken(..), parser) where
 
 import Lexico
 import Text.Parsec
@@ -285,12 +285,12 @@ printToken = tokenPrim show update_pos get_token where
 
 procedureToken :: ParsecT [Token] st IO (Token)
 procedureToken = tokenPrim show update_pos get_token where
-  get_token (Procedure pos) = Just (Procedure pos)
+  get_token (ProcedureTok pos) = Just (ProcedureTok pos)
   get_token _               = Nothing
 
 functionToken :: ParsecT [Token] st IO (Token)
 functionToken = tokenPrim show update_pos get_token where
-  get_token (Function pos) = Just (Function pos)
+  get_token (FunctionTok pos) = Just (FunctionTok pos)
   get_token _              = Nothing
 
 
@@ -586,8 +586,8 @@ parser :: [Token] -> IO (Either ParseError TokenTree)
 parser tokens = runParserT program [] "Error message" tokens
 
 -- Descomente para usar o main local
-main :: IO ()
-main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
-            { Left err -> print err; 
-              Right ans -> print ans
-            }
+-- main :: IO ()
+-- main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
+--             { Left err -> print err; 
+--               Right ans -> print ans
+--             }

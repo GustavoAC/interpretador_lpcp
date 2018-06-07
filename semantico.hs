@@ -112,7 +112,7 @@ avaliarExpressao st tree = case tree of
             _ -> (st, (IntType, (Int 4)))
     TriTree nonT a b c -> case nonT of
         _ -> case b of 
-            (LeafToken (SymOpPlus _ _)) -> res
+            (LeafToken (SymOpPlus _)) -> res
             where
                 (st1, (type1, val1)) = avaliarExpressao st a
                 (st2, (type2, val2)) = avaliarExpressao st1 c
@@ -277,6 +277,35 @@ listFromToEnd l 0 =
         l -> l
 listFromToEnd (h:l) i = listFromToEnd l (i-1)
 listFromToEnd _ _ = error "Out of bounds" -- implica que a lista é vazia e indice > 0
+
+-- TODO: NÃO TESTADA
+printAll :: State -> TokenTree -> State
+printAll st (UniTree NonTExpr expr) = (State table finalIO)
+    where
+        ((State table io), (typ, val)) = avaliarExpressao st expr
+        finalIO = io >> (printOne val)
+
+--                    NonTPrint
+printAll st (DualTree NonTExpr (UniTree NonTExpr expr) next) = stFinal
+    where
+        ((State table io), (typ, val)) = avaliarExpressao st expr
+        finalIO = io >> (printOne val)
+        stFinal = (printAll (State table finalIO) next)
+
+
+printOne :: Value -> IO()
+printOne val = case val of
+    (Int a) -> print a
+    (Float a) -> print a
+    (String a) -> putStrLn a
+    (Bool a) -> print a
+    (Pointer _ _) -> putStrLn "-Ponteiro-"
+    (List a) -> printList a
+    _ -> error "Impossível imprimir structs"
+
+printList :: [Value] -> IO()
+printList [] = putStr ""
+printList (a:vals) = (printOne a) >> (printList vals)
 
 -- TODO: NÃO TESTADA
 -- Deprecated
