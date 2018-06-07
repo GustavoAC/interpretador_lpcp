@@ -21,7 +21,12 @@ data NonTToken =
   NonTIf |
   NonTExpr |
   NonTInvokeFunction |
-  NonTId
+  NonTId |
+  NonTInvokeFunctionArgs |
+  NonPtrOp |
+  NonTArray |
+  NonTParam |
+  NonTListIndex
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
@@ -568,18 +573,78 @@ exprFinalIds = try (
     return (LeafToken a)
   )
 
--- Todo: Propriamente pegar os ids de função
+-- Função
 exprFunction :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-exprFunction = do
-  a <- idToken
-  return (makeToken a)
+exprFunction = try (
+  -- a(3, 4, ...)
+  do 
+    name <- idToken
+    a <- openParenthToken
+    b <- listParam
+    c <- closeParenthToken
+    return (DualTree NonTInvokeFunctionArgs (makeToken name) b ) -- ?
+  ) <|> (
+  -- a()
+  do
+    name <- idToken
+    a <- openParenthToken
+    b <- closeParenthToken
+    return (LeafToken name) -- ?
+  )
 
--- Todo: Propriamente pegar os ids de Id (ponteiro e array)
+listParam :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+listParam = try (
+  -- param, ... , param
+  do
+    a <- expr0
+    b <- semicolonToken
+    c <- listParam
+    return (DualTree NonTParam a c) -- ?
+  ) <|> (
+  -- param
+  do 
+    a <- expr0
+    return a
+  )
+
 exprId :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-exprId = do
-  a <- idToken
-  return (makeToken a)
+exprId = try (
+  -- $a 
+  do 
+    a <- symPtrOpToken
+    b <- exprId
+    return (UniTree NontPtrOp b) -- ?
+  ) <|> try (
+  -- a[] 
+  do 
+    a <- idToken -- Substituir por um nome mesmo, não só um token
+    b <- listIndexes
+    return (DualTree NonTArray (makeToken a) b) -- ?
+  ) <|> (
+  -- a
+  do 
+    a <- idToken -- Substituir por um nome mesmo, não só um token
+    return (LeafToken a)
+  )
 
+listIndexes :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+listIndexes = try (
+  -- [x]...[]
+  do
+    a <- openBracketToken
+    b <- expr0
+    c <- closeBracketToken
+    d <- listIndexes
+    return ( DualTree NonTListIndex (makeToken b) d) -- ?
+  ) <|> (
+  -- [x]
+  do
+    a <- openBracketToken
+    b <- expr0
+    c <- closeBracketToken
+    return b
+  )
+  
 -- Main e função que chama o parser
 
 parser :: [Token] -> IO (Either ParseError TokenTree)
