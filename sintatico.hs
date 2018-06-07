@@ -283,6 +283,47 @@ assign = do
           c <- expr0
           return (TriTree NonTAssign (makeToken a) (makeToken b) (makeToken c))
 
+-- Função
+exprFunction :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+exprFunction = 
+  (
+  do 
+    -- a(3, 4, ...)
+    name <- idToken
+    a <- openParenthToken
+    b <- listIds -- TO DO
+    c <- closeParenthToken
+    return (DualTree NonTInvokeFunction (makeToken name) b ) -- NonTInvokeFunction ?
+  ) <|> (
+  do
+    -- a()
+    name <- idToken
+    a <- openParenthToken
+    b <- closeParenthToken
+    return (LeafToken name) -- ?
+  )
+
+exprId :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+exprId =
+  (
+  -- $a 
+  do 
+    a <- symPtrOpToken
+    b <- exprId
+    return b -- ?
+  ) <|> (
+  -- a[] 
+  do 
+    a <- idToken
+    b <- listIndexes -- TO DO
+    return (DualTree NonTInvokeFunction (makeToken a) b) -- ?
+  ) <|> (
+  -- a
+  do 
+    a <- idToken
+    return (LeafToken a)
+  )
+
 -- &&  ||
 expr0 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 expr0 =
@@ -461,7 +502,7 @@ expr7 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
     (
     -- id
     do
-      a <- exprId
+      a <- exprId -- TO DO
       return (UniTree NonTId a)
     ) <|> (
     -- lit
