@@ -382,7 +382,7 @@ expr1 = try (
 expr1Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 expr1Ops = 
   (do
-    sym <- symOpMultToken -- MUDAR ISSO AQUI PARA O SIMBOLO BOOLEANO ! ! ! ! NOT  FAZENDO ESSA LINHA GRANDE PRA TER VISIBILIDADE
+    sym <- symBoolNotToken
     return (makeToken sym)
   )
 
