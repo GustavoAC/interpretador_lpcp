@@ -60,7 +60,6 @@ typeBooleanToken = tokenPrim show update_pos get_token where
 -- 
 -- Literais
 -- 
-
 idToken :: ParsecT [Token] st IO (Token)
 idToken = tokenPrim show update_pos get_token where
   get_token (Id pos x) = Just (Id pos x)
@@ -84,6 +83,31 @@ strLitToken = tokenPrim show update_pos get_token where
 -- 
 -- Símbolos Booleanos
 -- 
+symBoolNotToken :: ParsecT [Token] st IO (Token)
+symBoolNotToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolNot pos) = Just (SymBoolNot pos)
+  get_token _                = Nothing
+
+symBoolAndToken :: ParsecT [Token] st IO (Token)
+symBoolAndToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolAnd pos) = Just (SymBoolAnd pos)
+  get_token _                = Nothing
+
+symBoolOrToken :: ParsecT [Token] st IO (Token)
+symBoolOrToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolOr pos) = Just (SymBoolOr pos)
+  get_token _               = Nothing
+
+symBoolTrueToken :: ParsecT [Token] st IO (Token)
+symBoolTrueToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolTrue pos) = Just (SymBoolTrue pos)
+  get_token _                = Nothing
+
+symBoolFalseToken :: ParsecT [Token] st IO (Token)
+symBoolFalseToken = tokenPrim show update_pos get_token where
+  get_token (SymBoolFalse pos) = Just (SymBoolFalse pos)
+  get_token _                = Nothing
+
 symBoolEqToken :: ParsecT [Token] st IO (Token)
 symBoolEqToken = tokenPrim show update_pos get_token where
   get_token (SymBoolEq pos)   = Just (SymBoolEq pos)
@@ -103,16 +127,6 @@ symBoolGreaterThanEqToken :: ParsecT [Token] st IO (Token)
 symBoolGreaterThanEqToken = tokenPrim show update_pos get_token where
   get_token (SymBoolGreaterThanEq pos) = Just (SymBoolGreaterThanEq pos)
   get_token _                          = Nothing
-
-symBoolAndToken :: ParsecT [Token] st IO (Token)
-symBoolAndToken = tokenPrim show update_pos get_token where
-  get_token (SymBoolAnd pos) = Just (SymBoolAnd pos)
-  get_token _                = Nothing
-
-symBoolOrToken :: ParsecT [Token] st IO (Token)
-symBoolOrToken = tokenPrim show update_pos get_token where
-  get_token (SymBoolOr pos) = Just (SymBoolOr pos)
-  get_token _               = Nothing
 
 symBoolLessThanToken :: ParsecT [Token] st IO (Token)
 symBoolLessThanToken = tokenPrim show update_pos get_token where
@@ -236,6 +250,21 @@ endIfToken = tokenPrim show update_pos get_token where
   get_token (EndIf pos) = Just (EndIf pos)
   get_token _              = Nothing
 
+returnToken :: ParsecT [Token] st IO (Token)
+returnToken = tokenPrim show update_pos get_token where
+  get_token (Return pos) = Just (Return pos)
+  get_token _              = Nothing
+
+breakToken :: ParsecT [Token] st IO (Token)
+breakToken = tokenPrim show update_pos get_token where
+  get_token (Break pos) = Just (Break pos)
+  get_token _              = Nothing
+
+continueToken :: ParsecT [Token] st IO (Token)
+continueToken = tokenPrim show update_pos get_token where
+  get_token (Continue pos) = Just (Continue pos)
+  get_token _              = Nothing
+
 --
 -- Statements
 --
@@ -251,8 +280,19 @@ attribToken = tokenPrim show update_pos get_token where
 
 printToken :: ParsecT [Token] st IO (Token)
 printToken = tokenPrim show update_pos get_token where
-  get_token (Print pos) = Just (Print pos)
+  get_token (Print pos)  = Just (Print pos)
   get_token _            = Nothing
+
+procedureToken :: ParsecT [Token] st IO (Token)
+procedureToken = tokenPrim show update_pos get_token where
+  get_token (Procedure pos) = Just (Procedure pos)
+  get_token _               = Nothing
+
+functionToken :: ParsecT [Token] st IO (Token)
+functionToken = tokenPrim show update_pos get_token where
+  get_token (Function pos) = Just (Function pos)
+  get_token _              = Nothing
+
 
 -- O que ele quis dizer com isso?
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos
