@@ -16,6 +16,7 @@ instance Eq Field where
     (Field name1 type1) == (Field name2 type2) = (type1 == type2)
 
 data Memory = Memory [Variable] deriving (Eq, Show)
+--                         id   tipo valor escopo
 data Variable = Variable String Type Value String deriving (Eq, Show)
 
 data Type = IntType | FloatType | StringType | BoolType | ListType Type | PointerType Type | StructType String deriving (Eq, Show)
@@ -110,7 +111,7 @@ avaliarExpressao st tree = case tree of
         StrLit _ v -> (st, (StringType, String v))
     UniTree nonT a -> case nonT of
         NonTInvokeFunction -> error "não implementado ainda" -- startProcedure st a [] -- modificar para startFunction
-        NonTId -> error "não implementado ainda" -- parseid 
+        NonTId -> avaliarExpressaoParseId st a
     DualTree nonT a b -> case nonT of
         NonTExpr -> case a of 
             -- ! a
@@ -127,6 +128,36 @@ avaliarExpressao st tree = case tree of
                 -- res = startProcedure st1 nome args -- modificar para funçao
     TriTree nonT a b c -> case nonT of
         NonTExpr -> triTreeExprParser st b a c
+
+avaliarExpressaoParseId :: State -> TokenTree -> (State, (Type, Value))
+avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io) (LeafToken (Id _ id)) = res
+    where
+        (Variable _ typ val _) = lookUpScoped mem id scopes
+        res = ((State (SymbolTable a b c scopes (Memory mem)) io), (typ, val))
+avaliarExpressaoParseId st (UniTree NonTPtrOp a) = dereferencePtr (avaliarExpressaoParseId st a)
+avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io) (DualTree NonTArray (LeafToken (Id _ id)) indexes) =
+    getMatrixVal (State (SymbolTable a b c scopes (Memory mem)) io) typ searchedVal indexes
+    where
+        (Variable _ typ searchedVal _) = (lookUpScoped mem id scopes)
+
+dereferencePtr :: (State, (Type, Value)) -> (State, (Type, Value))
+dereferencePtr ((State (SymbolTable a b c d (Memory mem)) io), (_, Pointer id esc)) = res
+    where
+        (Variable _ typ val _) = lookUpWrapper mem id esc
+        res = ((State (SymbolTable a b c d (Memory mem)) io), (typ, val))
+
+
+getMatrixVal :: State -> Type -> Value -> TokenTree -> (State, (Type, Value))
+getMatrixVal st (ListType typ) var (DualTree NonTListIndex expr next) = res
+    where
+        (st2, (_, exprVal)) = avaliarExpressao st expr
+        res = getMatrixVal st2 typ (accessListAt var exprVal) next
+
+getMatrixVal st (ListType typ) var (UniTree NonTIndex expr) = res
+    where
+        (st2, (_, exprVal)) = avaliarExpressao st expr
+        val = accessListAt var exprVal
+        res = (st2, (typ, val))
 
 --                      Estado   Operação     op1          op2           resultado
 triTreeExprParser :: State -> TokenTree -> TokenTree -> TokenTree -> (State, (Type, Value))
