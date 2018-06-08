@@ -55,8 +55,8 @@ tokens :-
   while                                           { \p s -> While p }
   endif                                           { \p s -> EndIf p }
   if                                              { \p s -> If p }
-  procedure                                       { \p s -> Procedure p }
-  function                                        { \p s -> Function p }
+  procedure                                       { \p s -> ProcedureTok p }
+  function                                        { \p s -> FunctionTok p }
   return                                          { \p s -> Return p }
   break                                           { \p s -> Break p }
   continue                                        { \p s -> Continue p }
@@ -90,8 +90,8 @@ data Token =
   EndFor AlexPosn            |  
   While AlexPosn            |  
   EndWhile AlexPosn            |  
-  Procedure AlexPosn               |
-  Function AlexPosn                |
+  ProcedureTok AlexPosn               |
+  FunctionTok AlexPosn                |
   Return AlexPosn                  |
   Break AlexPosn                   |
   Continue AlexPosn                |
