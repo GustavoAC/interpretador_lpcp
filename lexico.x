@@ -49,6 +49,7 @@ tokens :-
   \=\>                                           { \p s -> SymPtrOp p }
   \$                                             { \p s -> SymAdressOp p }
   print                                         { \p s -> Print p }
+  do                                              { \p s -> Do p }
   endfor                                          { \p s -> EndFor p }
   for                                             { \p s -> For p }
   endwhile                                        { \p s -> EndWhile p }
@@ -83,7 +84,8 @@ data Token =
   Semicolon AlexPosn     |
   SymPtrOp AlexPosn     |
   SymAdressOp AlexPosn     |
-  Print AlexPosn            | 
+  Print AlexPosn            |
+  Do AlexPosn            | 
   If AlexPosn            |  
   EndIf AlexPosn            |  
   For AlexPosn            |  

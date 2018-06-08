@@ -19,6 +19,7 @@ data NonTToken =
   NonTStatement |
   NonTAssign |
   NonTIf |
+  NonTWhile |
   NonTExpr |
   NonTInvokeFunction |
   NonTId |
@@ -227,6 +228,11 @@ symAdressOpToken = tokenPrim show update_pos get_token where
 --
 -- Estruturas de controle
 --
+doToken :: ParsecT [Token] st IO (Token)
+doToken = tokenPrim show update_pos get_token where
+  get_token (Do pos)  = Just (Do pos)
+  get_token _         = Nothing
+
 forToken :: ParsecT [Token] st IO (Token)
 forToken = tokenPrim show update_pos get_token where
   get_token (For pos) = Just (For pos)
@@ -340,6 +346,19 @@ assign = do
           b <- attribToken
           c <- expr0
           return (TriTree NonTAssign (makeToken a) (makeToken b) c)
+
+whileLoop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+whileLoop = try (
+  do
+    a <- whileToken
+    b <- openParenthToken
+    c <- symBoolTrueToken
+    d <- closeParenthToken
+    e <- doToken
+    e <- stmts
+    f <- endWhileToken
+    return (TriTree NotTWhile (makeToken a) (makeToken c) e )
+  )
 
 -- &&  ||
 expr0 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
