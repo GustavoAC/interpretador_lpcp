@@ -552,7 +552,7 @@ exprFinalIds = try (
   -- function
   do
     a <- exprFunction
-    return (UniTree NonTInvokeFunction a)
+    return a
   ) <|> try (
   -- id
   do
@@ -610,7 +610,7 @@ exprFunction = try (
     name <- idToken
     a <- openParenthToken
     b <- closeParenthToken
-    return (LeafToken name) -- ?
+    return (UniTree NonTInvokeFunction (makeToken name)) -- ?
   )
 
 listParam :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
