@@ -265,6 +265,26 @@ endIfToken = tokenPrim show update_pos get_token where
   get_token (EndIf pos) = Just (EndIf pos)
   get_token _              = Nothing
 
+elseToken :: ParsecT [Token] st IO (Token)
+elseToken = tokenPrim show update_pos get_token where
+  get_token (Else pos) = Just (Else pos)
+  get_token _           = Nothing
+
+endElseToken :: ParsecT [Token] st IO (Token)
+endElseToken = tokenPrim show update_pos get_token where
+  get_token (EndElse pos) = Just (EndElse pos)
+  get_token _              = Nothing
+
+elifToken :: ParsecT [Token] st IO (Token)
+elifToken = tokenPrim show update_pos get_token where
+  get_token (Elif pos) = Just (Elif pos)
+  get_token _           = Nothing
+
+endElifToken :: ParsecT [Token] st IO (Token)
+endElifToken = tokenPrim show update_pos get_token where
+  get_token (EndElif pos) = Just (EndElif pos)
+  get_token _              = Nothing
+
 returnToken :: ParsecT [Token] st IO (Token)
 returnToken = tokenPrim show update_pos get_token where
   get_token (Return pos) = Just (Return pos)
@@ -344,7 +364,7 @@ stmt = try(
    return first
   ) <|> try (
   do
-    first <-  whileLoop
+    first <- loop
     return first
   )
 
@@ -354,6 +374,13 @@ assign = do
           b <- attribToken
           c <- expr0
           return (TriTree NonTAssign (makeToken a) (makeToken b) c)
+
+loop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+loop = try (
+  do
+    while <- whileLoop
+    return while
+  ) -- acrescentar for futuramente
 
 whileLoop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 whileLoop = try (

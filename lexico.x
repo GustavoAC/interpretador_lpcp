@@ -54,6 +54,10 @@ tokens :-
   for                                             { \p s -> For p }
   endwhile                                        { \p s -> EndWhile p }
   while                                           { \p s -> While p }
+  endelse                                         { \p s -> EndElse p }
+  else                                            { \p s -> Else p }
+  endelif                                         { \p s -> EndElif p }
+  elif                                            { \p s -> Elif p }
   endif                                           { \p s -> EndIf p }
   if                                              { \p s -> If p }
   procedure                                       { \p s -> ProcedureTok p }
@@ -87,7 +91,11 @@ data Token =
   Print AlexPosn            |
   Do AlexPosn            | 
   If AlexPosn            |  
-  EndIf AlexPosn            |  
+  EndIf AlexPosn         |  
+  Else AlexPosn          |
+  EndElse AlexPosn       |
+  Elif AlexPosn          |
+  EndElif AlexPosn       |
   For AlexPosn            |  
   EndFor AlexPosn            |  
   While AlexPosn            |  
