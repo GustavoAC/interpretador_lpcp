@@ -16,6 +16,7 @@ instance Eq Field where
     (Field name1 type1) == (Field name2 type2) = (type1 == type2)
 
 data Memory = Memory [Variable] deriving (Eq, Show)
+--                         id   tipo valor escopo
 data Variable = Variable String Type Value String deriving (Eq, Show)
 
 data Type = IntType | FloatType | StringType | BoolType | ListType Type | PointerType Type | StructType String deriving (Eq, Show)
@@ -98,28 +99,174 @@ cleanScopeFromMem ((Variable id typ val valEsc):mem) esc =
         then cleanScopeFromMem mem esc
     else cleanScopeFromMem ((Variable id typ val valEsc):mem) esc
 
--- TODO: Substituir os _ por NonTExpr
 -- Como funções podem ser chamadas de dentro de expressões e funções podem modificar o
 -- estado, então o estado todo tem que ser passado pra o avaliador de expr
 --                 estado    arvoreExpr   estadofinal e valor encontrado
 avaliarExpressao :: State -> TokenTree -> (State, (Type, Value))
 avaliarExpressao st tree = case tree of
+    -- literais
+    LeafToken a -> case a of -- TODO: Adicionar true e false
+        IntLit _ v -> (st, (IntType, Int v))
+        FloatLit _ v -> (st, (FloatType, Float v))
+        StrLit _ v -> (st, (StringType, String v))
     UniTree nonT a -> case nonT of
-        _ -> case a of 
-            _ -> (st, (IntType, (Int 4)))
+        NonTInvokeFunction -> error "não implementado ainda" -- startProcedure st a [] -- modificar para startFunction
+        NonTId -> avaliarExpressaoParseId st a
     DualTree nonT a b -> case nonT of
-        _ -> case a of 
-            _ -> (st, (IntType, (Int 4)))
-    TriTree nonT a b c -> case nonT of
-        _ -> case b of 
-            (LeafToken (SymOpPlus _)) -> res
+        NonTExpr -> case a of 
+            -- ! a
+            (LeafToken (SymBoolNot _)) -> res
             where
                 (st1, (type1, val1)) = avaliarExpressao st a
-                (st2, (type2, val2)) = avaliarExpressao st1 c
-                res = (st2, exprSum (type1, val1) (type2, val2))
+                res = (st1, exprSum (type1, val1) (type1, val1)) -- mudar função
+        
+        NonTInvokeFunctionArgs -> error "não implementado ainda" -- res
+            -- where
+                -- (State, [(Type, Value)])
+                -- (st1, (args)) = evalArgs st b
+                -- nome = algo
+                -- res = startProcedure st1 nome args -- modificar para funçao
+    TriTree nonT a b c -> case nonT of
+        NonTExpr -> triTreeExprParser st b a c
+
+avaliarExpressaoParseId :: State -> TokenTree -> (State, (Type, Value))
+avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io) (LeafToken (Id _ id)) = res
+    where
+        (Variable _ typ val _) = lookUpScoped mem id scopes
+        res = ((State (SymbolTable a b c scopes (Memory mem)) io), (typ, val))
+avaliarExpressaoParseId st (UniTree NonTPtrOp a) = dereferencePtr (avaliarExpressaoParseId st a)
+avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io) (DualTree NonTArray (LeafToken (Id _ id)) indexes) =
+    getMatrixVal (State (SymbolTable a b c scopes (Memory mem)) io) typ searchedVal indexes
+    where
+        (Variable _ typ searchedVal _) = (lookUpScoped mem id scopes)
+
+dereferencePtr :: (State, (Type, Value)) -> (State, (Type, Value))
+dereferencePtr ((State (SymbolTable a b c d (Memory mem)) io), (_, Pointer id esc)) = res
+    where
+        (Variable _ typ val _) = lookUpWrapper mem id esc
+        res = ((State (SymbolTable a b c d (Memory mem)) io), (typ, val))
+
+
+getMatrixVal :: State -> Type -> Value -> TokenTree -> (State, (Type, Value))
+getMatrixVal st (ListType typ) var (DualTree NonTListIndex expr next) = res
+    where
+        (st2, (_, exprVal)) = avaliarExpressao st expr
+        res = getMatrixVal st2 typ (accessListAt var exprVal) next
+
+getMatrixVal st (ListType typ) var (UniTree NonTIndex expr) = res
+    where
+        (st2, (_, exprVal)) = avaliarExpressao st expr
+        val = accessListAt var exprVal
+        res = (st2, (typ, val))
+
+--                      Estado   Operação     op1          op2           resultado
+triTreeExprParser :: State -> TokenTree -> TokenTree -> TokenTree -> (State, (Type, Value))
+-- a + b
+triTreeExprParser st (LeafToken (SymOpPlus _)) a c = res
+    where 
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2))
+
+-- a == b
+triTreeExprParser st (LeafToken (SymBoolEq _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a != b
+triTreeExprParser st (LeafToken (SymBoolNotEq _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a <= b
+triTreeExprParser st (LeafToken (SymBoolLessThanEq _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a >= b
+triTreeExprParser st (LeafToken (SymBoolGreaterThanEq _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a && b
+triTreeExprParser st (LeafToken (SymBoolAnd _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a || b
+triTreeExprParser st (LeafToken (SymBoolOr _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a < b
+triTreeExprParser st (LeafToken (SymBoolLessThan _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a > b
+triTreeExprParser st (LeafToken (SymBoolGreaterThan _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a - b
+triTreeExprParser st (LeafToken (SymOpMinus _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a * b
+triTreeExprParser st (LeafToken (SymOpMult _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a / b
+triTreeExprParser st (LeafToken (SymOpDiv _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a ^ b
+triTreeExprParser st (LeafToken (SymOpExp _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+
+-- a % b
+triTreeExprParser st (LeafToken (SymOpMod _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
 
 exprSum :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprSum (IntType, Int a) (IntType, Int b) = (IntType, Int (a + b))
+exprSum (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a + b))
+exprSum (StringType, String a) (StringType, String b) = (StringType, String (a ++ b))
+exprSum (ListType t1, List a) (ListType t2, List b) = 
+    if t1 == t2 
+        then (ListType t1, List (a ++ b))
+    else error "Concatenação entre listas de tipos diferentes não é permitida"
 exprSum _ _ = error "Operação entre tipos não permitida"
 
 --                   memoria       params             campos    escopo    memoria atualizada
