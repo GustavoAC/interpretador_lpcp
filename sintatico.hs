@@ -584,6 +584,25 @@ exprFinalIds = try (
   
   )
 
+-- Chamada de procedimento
+exprProcedure :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+exprProcedure = try (
+  -- nomeProcedimento(int a, int b, ...) 
+  do
+    name <- idToken
+    a <- openParenthToken
+    b <- listParam
+    b <- closeParenthToken
+    return (DualTree NonTInvokeFunctionArgs (makeToken name) b ) -- ?
+  ) <|> (
+  -- nomeProcedimento()
+  do
+    name <- idToken
+    a <- openParenthToken
+    b <- closeParenthToken
+    return (LeafToken name) -- ?
+  )
+
 -- Função
 exprFunction :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 exprFunction = try (
