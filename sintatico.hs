@@ -28,8 +28,10 @@ data NonTToken =
   NonTCallProcedure |
   NonTPtrOp |
   NonTArray |
+  NonTParams |
   NonTParam |
-  NonTListIndex
+  NonTListIndex |
+  NonTIndex
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
@@ -587,11 +589,22 @@ exprFinalIds = try (
   do
     a <- floatLitToken
     return (LeafToken a)
-  ) <|> (
+  ) <|> try (
   -- intlit
   do
     a <- intLitToken
     return (LeafToken a)
+  ) <|> try (
+  -- true lit
+  do 
+    a <- symBoolTrueToken
+    return (LeafToken a)
+  ) <|> (
+  -- false lit
+  do
+    a <- symBoolFalseToken
+    return (LeafToken a)
+  
   )
 
 -- Chamada de procedimento
@@ -639,19 +652,36 @@ listParam = try (
     a <- expr0
     b <- semicolonToken
     c <- listParam
-    return (DualTree NonTParam a c) -- ?
+    return (DualTree NonTParams a c) -- ?
   ) <|> (
   -- param
   do 
     a <- expr0
-    return a
+    return ( UniTree NonTParam a)
   )
 
 exprId :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 exprId = try (
+  -- $(algo)[]
+  do 
+    a <- symAdressOpToken
+    b <- openParenthToken
+    c <- exprId
+    d <- closeParenthToken
+    e <- listIndexes
+    return (DualTree NonTArray (UniTree NonTPtrOp c) e) -- ?
+  ) <|> try (
+  -- $( algo )
+  do
+    a <- symAdressOpToken
+    b <- openParenthToken
+    c <- exprId
+    d <- closeParenthToken
+    return (UniTree NonTPtrOp c)
+  ) <|> try ( 
   -- $a 
   do 
-    a <- symPtrOpToken
+    a <- symAdressOpToken
     b <- exprId
     return (UniTree NonTPtrOp b) -- ?
   ) <|> try (
@@ -682,9 +712,9 @@ listIndexes = try (
     a <- openBracketToken
     b <- expr0
     c <- closeBracketToken
-    return b
+    return ( UniTree NonTIndex b)
   )
-  
+
 -- Main e função que chama o parser
 
 parser :: [Token] -> IO (Either ParseError TokenTree)
