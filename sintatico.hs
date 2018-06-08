@@ -566,11 +566,22 @@ exprFinalIds = try (
   do
     a <- floatLitToken
     return (LeafToken a)
-  ) <|> (
+  ) <|> try (
   -- intlit
   do
     a <- intLitToken
     return (LeafToken a)
+  ) <|> try (
+  -- true lit
+  do 
+    a <- symBoolTrueToken
+    return (LeafToken a)
+  ) <|> (
+  -- false lit
+  do
+    a <- symBoolFalseToken
+    return (LeafToken a)
+  
   )
 
 -- Função
@@ -644,7 +655,7 @@ listIndexes = try (
     c <- closeBracketToken
     return b
   )
-  
+
 -- Main e função que chama o parser
 
 parser :: [Token] -> IO (Either ParseError TokenTree)
