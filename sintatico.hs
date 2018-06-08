@@ -265,6 +265,11 @@ endIfToken = tokenPrim show update_pos get_token where
   get_token (EndIf pos) = Just (EndIf pos)
   get_token _              = Nothing
 
+thenToken :: ParsecT [Token] st IO (Token)
+thenToken = tokenPrim show update_pos get_token where
+  get_token (Then pos) = Just (Then pos)
+  get_token _           = Nothing
+
 elseToken :: ParsecT [Token] st IO (Token)
 elseToken = tokenPrim show update_pos get_token where
   get_token (Else pos) = Just (Else pos)

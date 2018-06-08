@@ -54,12 +54,13 @@ tokens :-
   for                                             { \p s -> For p }
   endwhile                                        { \p s -> EndWhile p }
   while                                           { \p s -> While p }
+  endif                                           { \p s -> EndIf p }
+  if                                              { \p s -> If p }
+  then                                            { \p s -> Then p }
   endelse                                         { \p s -> EndElse p }
   else                                            { \p s -> Else p }
   endelif                                         { \p s -> EndElif p }
   elif                                            { \p s -> Elif p }
-  endif                                           { \p s -> EndIf p }
-  if                                              { \p s -> If p }
   procedure                                       { \p s -> ProcedureTok p }
   function                                        { \p s -> FunctionTok p }
   return                                          { \p s -> Return p }
@@ -92,6 +93,7 @@ data Token =
   Do AlexPosn            | 
   If AlexPosn            |  
   EndIf AlexPosn         |  
+  Then AlexPosn         |  
   Else AlexPosn          |
   EndElse AlexPosn       |
   Elif AlexPosn          |
