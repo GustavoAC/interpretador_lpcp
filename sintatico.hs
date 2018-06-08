@@ -23,7 +23,9 @@ data NonTToken =
   NonTInvokeFunction |
   NonTId |
   NonTInvokeFunctionArgs |
-  NonPtrOp |
+  NonTCallProcedureArgs |
+  NonTCallProcedure |
+  NonTPtrOp |
   NonTArray |
   NonTParam |
   NonTListIndex
@@ -574,22 +576,22 @@ exprFinalIds = try (
   )
 
 -- Chamada de procedimento
-exprProcedure :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-exprProcedure = try (
+callProcedure :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+callProcedure = try (
   -- nomeProcedimento(int a, int b, ...) 
   do
     name <- idToken
     a <- openParenthToken
     b <- listParam
-    b <- closeParenthToken
-    return (DualTree NonTInvokeFunctionArgs (makeToken name) b ) -- ?
+    c <- closeParenthToken
+    return (DualTree NonTCallProcedureArgs (makeToken name) b ) -- ?
   ) <|> (
   -- nomeProcedimento()
   do
     name <- idToken
     a <- openParenthToken
     b <- closeParenthToken
-    return (LeafToken name) -- ?
+    return (UniTree NonTCallProcedure (makeToken name)) -- ?
   )
 
 -- Função
@@ -632,7 +634,7 @@ exprId = try (
   do 
     a <- symPtrOpToken
     b <- exprId
-    return (UniTree NontPtrOp b) -- ?
+    return (UniTree NonTPtrOp b) -- ?
   ) <|> try (
   -- a[] 
   do 
@@ -654,7 +656,7 @@ listIndexes = try (
     b <- expr0
     c <- closeBracketToken
     d <- listIndexes
-    return ( DualTree NonTListIndex (makeToken b) d) -- ?
+    return ( DualTree NonTListIndex b d) -- ?
   ) <|> (
   -- [x]
   do
