@@ -1,1 +1,3 @@
-a = ((c && (a)) < (b + d));
+while (a < 20 && !b) do
+	a = $($(asgh)[as()])[3+3][2];
+endwhile

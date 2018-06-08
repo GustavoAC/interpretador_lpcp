@@ -1,5 +1,5 @@
 -- Comente para executar o main local
-module Sintatico (TokenTree(..), NonTToken(..), parser) where
+-- module Sintatico (TokenTree(..), NonTToken(..), parser) where
 
 import Lexico
 import Text.Parsec
@@ -19,6 +19,7 @@ data NonTToken =
   NonTStatement |
   NonTAssign |
   NonTIf |
+  NonTWhile |
   NonTExpr |
   NonTInvokeFunction |
   NonTId |
@@ -27,8 +28,10 @@ data NonTToken =
   NonTCallProcedure |
   NonTPtrOp |
   NonTArray |
+  NonTParams |
   NonTParam |
-  NonTListIndex
+  NonTListIndex |
+  NonTIndex
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
@@ -227,6 +230,11 @@ symAdressOpToken = tokenPrim show update_pos get_token where
 --
 -- Estruturas de controle
 --
+doToken :: ParsecT [Token] st IO (Token)
+doToken = tokenPrim show update_pos get_token where
+  get_token (Do pos)  = Just (Do pos)
+  get_token _         = Nothing
+
 forToken :: ParsecT [Token] st IO (Token)
 forToken = tokenPrim show update_pos get_token where
   get_token (For pos) = Just (For pos)
@@ -255,6 +263,31 @@ ifToken = tokenPrim show update_pos get_token where
 endIfToken :: ParsecT [Token] st IO (Token)
 endIfToken = tokenPrim show update_pos get_token where
   get_token (EndIf pos) = Just (EndIf pos)
+  get_token _              = Nothing
+
+thenToken :: ParsecT [Token] st IO (Token)
+thenToken = tokenPrim show update_pos get_token where
+  get_token (Then pos) = Just (Then pos)
+  get_token _           = Nothing
+
+elseToken :: ParsecT [Token] st IO (Token)
+elseToken = tokenPrim show update_pos get_token where
+  get_token (Else pos) = Just (Else pos)
+  get_token _           = Nothing
+
+endElseToken :: ParsecT [Token] st IO (Token)
+endElseToken = tokenPrim show update_pos get_token where
+  get_token (EndElse pos) = Just (EndElse pos)
+  get_token _              = Nothing
+
+elifToken :: ParsecT [Token] st IO (Token)
+elifToken = tokenPrim show update_pos get_token where
+  get_token (Elif pos) = Just (Elif pos)
+  get_token _           = Nothing
+
+endElifToken :: ParsecT [Token] st IO (Token)
+endElifToken = tokenPrim show update_pos get_token where
+  get_token (EndElif pos) = Just (EndElif pos)
   get_token _              = Nothing
 
 returnToken :: ParsecT [Token] st IO (Token)
@@ -329,10 +362,16 @@ stmts = try (
   )
 
 stmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-stmt = do
-       first <- assign
-       colon <- semicolonToken
-       return (UniTree NonTStatement first)
+stmt = try(
+  do
+   first <- assign
+   colon <- semicolonToken
+   return first
+  ) <|> try (
+  do
+    first <- loop
+    return first
+  )
 
 assign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 assign = do
@@ -340,6 +379,26 @@ assign = do
           b <- attribToken
           c <- expr0
           return (TriTree NonTAssign (makeToken a) (makeToken b) c)
+
+loop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+loop = try (
+  do
+    while <- whileLoop
+    return while
+  ) -- acrescentar for futuramente
+
+whileLoop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+whileLoop = try (
+  do
+    a <- whileToken
+    b <- openParenthToken
+    c <- expr0
+    d <- closeParenthToken
+    e <- doToken
+    e <- stmts
+    f <- endWhileToken
+    return (DualTree NonTWhile c e )
+  )
 
 -- &&  ||
 expr0 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -568,11 +627,22 @@ exprFinalIds = try (
   do
     a <- floatLitToken
     return (LeafToken a)
-  ) <|> (
+  ) <|> try (
   -- intlit
   do
     a <- intLitToken
     return (LeafToken a)
+  ) <|> try (
+  -- true lit
+  do 
+    a <- symBoolTrueToken
+    return (LeafToken a)
+  ) <|> (
+  -- false lit
+  do
+    a <- symBoolFalseToken
+    return (LeafToken a)
+  
   )
 
 -- Chamada de procedimento
@@ -620,19 +690,36 @@ listParam = try (
     a <- expr0
     b <- semicolonToken
     c <- listParam
-    return (DualTree NonTParam a c) -- ?
+    return (DualTree NonTParams a c) -- ?
   ) <|> (
   -- param
   do 
     a <- expr0
-    return a
+    return ( UniTree NonTParam a)
   )
 
 exprId :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 exprId = try (
+  -- $(algo)[]
+  do 
+    a <- symAdressOpToken
+    b <- openParenthToken
+    c <- exprId
+    d <- closeParenthToken
+    e <- listIndexes
+    return (DualTree NonTArray (UniTree NonTPtrOp c) e) -- ?
+  ) <|> try (
+  -- $( algo )
+  do
+    a <- symAdressOpToken
+    b <- openParenthToken
+    c <- exprId
+    d <- closeParenthToken
+    return (UniTree NonTPtrOp c)
+  ) <|> try ( 
   -- $a 
   do 
-    a <- symPtrOpToken
+    a <- symAdressOpToken
     b <- exprId
     return (UniTree NonTPtrOp b) -- ?
   ) <|> try (
@@ -663,17 +750,17 @@ listIndexes = try (
     a <- openBracketToken
     b <- expr0
     c <- closeBracketToken
-    return b
+    return ( UniTree NonTIndex b)
   )
-  
+
 -- Main e função que chama o parser
 
 parser :: [Token] -> IO (Either ParseError TokenTree)
 parser tokens = runParserT program [] "Error message" tokens
 
 -- Descomente para usar o main local
--- main :: IO ()
--- main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
---             { Left err -> print err; 
---               Right ans -> print ans
---             }
+main :: IO ()
+main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
+            { Left err -> print err; 
+              Right ans -> print ans
+            }

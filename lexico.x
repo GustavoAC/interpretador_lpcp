@@ -49,12 +49,18 @@ tokens :-
   \=\>                                           { \p s -> SymPtrOp p }
   \$                                             { \p s -> SymAdressOp p }
   print                                         { \p s -> Print p }
+  do                                              { \p s -> Do p }
   endfor                                          { \p s -> EndFor p }
   for                                             { \p s -> For p }
   endwhile                                        { \p s -> EndWhile p }
   while                                           { \p s -> While p }
   endif                                           { \p s -> EndIf p }
   if                                              { \p s -> If p }
+  then                                            { \p s -> Then p }
+  endelse                                         { \p s -> EndElse p }
+  else                                            { \p s -> Else p }
+  endelif                                         { \p s -> EndElif p }
+  elif                                            { \p s -> Elif p }
   procedure                                       { \p s -> ProcedureTok p }
   function                                        { \p s -> FunctionTok p }
   return                                          { \p s -> Return p }
@@ -83,9 +89,15 @@ data Token =
   Semicolon AlexPosn     |
   SymPtrOp AlexPosn     |
   SymAdressOp AlexPosn     |
-  Print AlexPosn            | 
+  Print AlexPosn            |
+  Do AlexPosn            | 
   If AlexPosn            |  
-  EndIf AlexPosn            |  
+  EndIf AlexPosn         |  
+  Then AlexPosn         |  
+  Else AlexPosn          |
+  EndElse AlexPosn       |
+  Elif AlexPosn          |
+  EndElif AlexPosn       |
   For AlexPosn            |  
   EndFor AlexPosn            |  
   While AlexPosn            |  
