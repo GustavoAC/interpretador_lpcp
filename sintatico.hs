@@ -585,7 +585,6 @@ exprFinalIds = try (
   do
     a <- symBoolFalseToken
     return (LeafToken a)
-  
   )
 
 -- Chamada de procedimento
