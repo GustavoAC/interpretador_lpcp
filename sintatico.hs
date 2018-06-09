@@ -31,7 +31,9 @@ data NonTToken =
   NonTParams |
   NonTParam |
   NonTListIndex |
-  NonTIndex
+  NonTIndex |
+  NonTDecl |
+  NonTListIds
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
@@ -362,7 +364,12 @@ stmts = try (
   )
 
 stmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-stmt = try(
+stmt = try (
+  do
+   first <- decl
+   colon <- semicolonToken
+   return first
+  ) <|> try (
   do
    first <- assign
    colon <- semicolonToken
@@ -372,6 +379,75 @@ stmt = try(
     first <- loop
     return first
   )
+
+decl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+decl = try (
+  -- int a; ...; a = algo
+  do 
+    type_token <- types
+    list <- listIds
+    v <- commaToken
+    id <- assign
+    return ( TriTree NonTDecl type_token list id)  
+  ) <|> try (
+  -- int a; ...; a
+  do 
+    type_token <- types
+    list <- listIds
+    v <- commaToken
+    id <- idToken
+    return ( TriTree NonTDecl type_token list (makeToken id))  
+  ) <|> try (
+  -- int a = algo
+  do 
+    type_token <- types
+    id <- assign
+    return ( DualTree NonTDecl type_token id)  
+  ) <|> (
+  -- int a
+  do 
+    type_token <- types
+    id <- idToken
+    return ( DualTree NonTDecl type_token (makeToken id))  
+  )
+
+listIds :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+listIds = try (
+  -- a, ... , a
+  do 
+    id <- idToken
+    v <- commaToken
+    list <- listIds
+    return (DualTree NonTListIds (makeToken id) list)
+  ) <|> (
+  -- a
+  do
+    id <- idToken
+    return (LeafToken id)
+  )
+
+types :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+types = try (
+    do
+      t <- typeIntToken
+      return (LeafToken t)
+    ) <|> try (
+    do 
+      t <- typeFloatToken
+      return (LeafToken t)
+    ) <|> try (
+    do 
+      t <- typeStringToken
+      return (LeafToken t)
+    ) <|> try (
+    do
+      t <- typePointerToken
+      return (LeafToken t)
+    ) <|> (
+    do
+      t <- typeBooleanToken
+      return (LeafToken t)
+    )
 
 assign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 assign = do
@@ -519,7 +595,8 @@ expr3 = try (
   )
 
 expr3Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-expr3Ops = (do
+expr3Ops = (
+  do
     sym <- symOpPlusToken
     return (makeToken sym)
   ) <|> (do
@@ -550,7 +627,8 @@ expr4 = try (
   )
  
 expr4Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-expr4Ops = (do
+expr4Ops = (
+  do
     sym <- symOpMultToken
     return (makeToken sym)
   ) <|> (do
@@ -585,7 +663,8 @@ expr5 = try (
   )
 
 expr5Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-expr5Ops = (do
+expr5Ops = (
+  do
     sym <- symOpExpToken
     return (makeToken sym)
   )
@@ -687,7 +766,7 @@ listParam = try (
   -- param, ... , param
   do
     a <- expr0
-    b <- semicolonToken
+    b <- commaToken
     c <- listParam
     return (DualTree NonTParams a c) -- ?
   ) <|> (
