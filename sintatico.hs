@@ -315,6 +315,11 @@ semicolonToken = tokenPrim show update_pos get_token where
   get_token (Semicolon pos) = Just (Semicolon pos)
   get_token _               = Nothing
 
+commaToken :: ParsecT [Token] st IO (Token)
+commaToken = tokenPrim show update_pos get_token where
+  get_token (Comma pos) = Just (Comma pos)
+  get_token _               = Nothing
+
 attribToken :: ParsecT [Token] st IO (Token)
 attribToken = tokenPrim show update_pos get_token where
   get_token (Attrib pos) = Just (Attrib pos)
