@@ -1,4 +1,4 @@
-bool a, a = esdsda;	
+bool a, b, c = 10;	
 while (a < 20 && !b) do
 	a = $($(asgh)[as()])[3+3][2];
 endwhile

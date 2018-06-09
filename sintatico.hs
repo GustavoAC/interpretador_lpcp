@@ -387,44 +387,26 @@ stmt = try (
 
 decl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 decl = try (
-  -- int a; ...; a = algo
   do 
     type_token <- types
-    list <- listIds
-    v <- commaToken
-    id <- assign
-    return ( TriTree NonTDecl type_token list id)  
-  ) <|> try (
-  -- int a; ...; a
-  do 
-    type_token <- types
-    list <- listIds
-    v <- commaToken
-    id <- idToken
-    return ( TriTree NonTDecl type_token list (makeToken id))  
-  ) <|> try (
-  -- int a = algo
-  do 
-    type_token <- types
-    id <- assign
+    id <- listIds
     return ( DualTree NonTDecl type_token id)  
-  ) <|> (
-  -- int a
-  do 
-    type_token <- types
-    id <- idToken
-    return ( DualTree NonTDecl type_token (makeToken id))  
   )
 
 listIds :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 listIds = try (
-  -- a, ... , a
+  -- a = algo
+  do 
+    a <- assign
+    return a
+  ) <|> try (
+  -- a, ...
   do 
     id <- idToken
     v <- commaToken
     list <- listIds
     return (DualTree NonTListIds (makeToken id) list)
-  ) <|> (
+  ) <|> try (
   -- a
   do
     id <- idToken
