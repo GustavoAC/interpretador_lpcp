@@ -67,6 +67,8 @@ tokens :-
   return                                          { \p s -> Return p }
   break                                           { \p s -> Break p }
   continue                                        { \p s -> Continue p }
+  new                                             { \p s -> New p }
+  delete                                          { \p s -> Delete p }
   $alpha [$alpha $digit \_ \']*               { \p s -> Id p s }
   \" $alpha [$alpha $digit ! \_ \']* \"       { \p s -> StrLit p s }
 {
@@ -109,6 +111,8 @@ data Token =
   Return AlexPosn                  |
   Break AlexPosn                   |
   Continue AlexPosn                |
+  New AlexPosn                |
+  Delete AlexPosn                |
   FloatLit AlexPosn Float |
   IntLit AlexPosn Int     |
   StrLit AlexPosn String  |
