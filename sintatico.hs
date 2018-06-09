@@ -19,6 +19,8 @@ data NonTToken =
   NonTStatement |
   NonTAssign |
   NonTIf |
+  NonTElse |
+  NonTElif |
   NonTWhile |
   NonTExpr |
   NonTInvokeFunction |
@@ -371,6 +373,11 @@ stmts = try (
 stmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 stmt = try (
   do
+   first <- condition
+   colon <- semicolonToken
+   return first
+  ) <|> try (
+  do
    first <- decl
    colon <- semicolonToken
    return first
@@ -382,6 +389,10 @@ stmt = try (
   ) <|> try (
   do
     first <- loop
+    return first
+  ) <|> try (
+  do
+    first <- condition
     return first
   )
 
@@ -448,7 +459,67 @@ loop = try (
   do
     while <- whileLoop
     return while
-  ) -- acrescentar for futuramente
+  ) -- to do acrescentar for futuramente
+
+condition :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+condition = try (
+  -- if(<expr>) do <stmts> endif ...
+  do
+    ifsymb <- ifToken
+    p1 <- openParenthToken
+    e <- expr0
+    p2 <- closeParenthToken
+    d <- doToken
+    s <- stmts
+    endifsymb <- endIfToken
+    cond2 <- condition2 
+    return (TriTree NonTIf e s cond2)
+  ) <|> try (
+  -- if(<expr>) do <stmts> endif
+  do
+    ifsymb <- ifToken
+    p1 <- openParenthToken
+    e <- expr0
+    p2 <- closeParenthToken
+    d <- doToken
+    s <- stmts
+    endifsymb <- endIfToken
+    return (DualTree NonTIf e s)
+  )
+
+condition2 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+condition2 = try (
+  -- elif (<expr>) do <stmts> endelif <condition2>
+  do
+    elifsymb <- elifToken
+    p1 <- openParenthToken
+    e <- expr0
+    p2 <- closeParenthToken
+    d <- doToken
+    s <- stmts
+    endelifsymb <- endElifToken
+    cond2 <- condition2 
+    return (TriTree NonTElif e s cond2)
+  ) <|> try (
+  -- elif (<expr>) do <stmts> endelif
+  do
+    elifsymb <- elifToken
+    p1 <- openParenthToken
+    e <- expr0
+    p2 <- closeParenthToken
+    d <- doToken
+    s <- stmts
+    endelifsymb <- endElifToken
+    return (DualTree NonTElif e s)
+  ) <|> try (
+  -- else do <stmts> endelse
+  do
+    elsesymb <- elseToken
+    d <- doToken
+    s <- stmts
+    endelsesymb <- endElseToken
+    return (UniTree NonTElse s)
+  )
 
 whileLoop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 whileLoop = try (
@@ -713,7 +784,7 @@ exprFinalIds = try (
 -- Chamada de procedimento
 callProcedure :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 callProcedure = try (
-  -- nomeProcedimento(int a, int b, ...) 
+  -- nomeProcedimento(a, b, ...) 
   do
     name <- idToken
     a <- openParenthToken
