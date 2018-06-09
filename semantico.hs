@@ -54,9 +54,9 @@ analisadorSemantico (UniTree NonTProgram a) (State table io) =
         (State table2 io2) = analisadorSemantico a (State table io)
 
 -- decl
-analisadorSemantico (DualTree NonTDecl declType ids) (State table io) = error "não implementado"
+analisadorSemantico (DualTree NonTDecl declType ids) st = declareMany st (parseType declType) ids
 -- assign
-analisadorSemantico (TriTree NonTAssign a b c) (State table io) = error "não implementado"
+analisadorSemantico (DualTree NonTAssign a c) (State table io) = assignToId st a c
 -- point to
 -- analisadorSemantico (LeafToken Continue) (State table io) = error "não implementado"
 -- for
@@ -97,6 +97,49 @@ analisadorSemantico (DualTree _ a b) st =
 analisadorSemantico (UniTree _ a) st = 
     analisadorSemantico a st
 analisadorSemantico (None) st = st
+
+-- resta declarações com assigns
+declareMany :: State -> Type -> TokenTree -> State
+declareMany st typ (DualTree NonTListIds (Id _ id) rest) =
+    declareMany finalSt typ rest
+    where
+        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st
+        newVar = Variable id typ (defaultVal typ) currScope
+        finalMem = instanciarVar mem newVar
+        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
+declareMany st typ (Id _ id) = finalSt
+    where
+        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st
+        newVar = Variable id typ (defaultVal typ) currScope
+        finalMem = instanciarVar mem newVar
+        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
+
+defaultVal :: Type -> Value
+defaultVal IntType = Int 0
+defaultVal FloatType = Float 0.0
+defaultVal StringType = String []
+defaultVal BoolType = Bool False
+defaultVal PointerType _ = Pointer [] (Scope ([],0) ([],0))
+defaultVal ListType _ = List []
+defaultVal StructType _ = StructVal []
+
+parseType :: TokenTree -> Type
+parseType (UniTree NonTListType a) = ListType (parseType a)
+parseType (UniTree NonTPtrType a) = PointerType (parseType a)
+parseType (UniTree NonTStructType (Id _ a) = StructType a
+parseType (TokenTree TypeInt _) = IntType
+parseType (TokenTree TypeFloat _) = FloatType
+parseType (TokenTree TypeString _) = StringType
+parseType (TokenTree TypeBoolean _) = BoolType
+
+assignToId :: State -> TokenTree -> TokenTree -> State
+assignToId st id expr = finalState
+    where
+        exprRes = avaliarExpressao expr
+        (st1, finalVal) = criarValorParaAtribuicao st id exprRes
+        (State (SymbolTable a b c d (Memory mem)) io) = st1
+        finalMem = instanciarVar mem finalVal
+        finalState = (State (SymbolTable a b c d (Memory finalMem)) io)
 
 -- TODO: TESTAR FAMÍLIA DE FUNÇÕES STARTPROCEDURE
 --       Trocar params de [String] pra [(Type, Value)] e avaliar por aqui
@@ -379,9 +422,9 @@ returnNthOfList (val:l) n = returnNthOfList l (n-1)
 
 -- TODO: NÃO TESTADA 
 -- Se não achar instancia, se achar joga erro
---             memoria  id/tipo/escopo/valor
-instanciar :: [Variable] -> Variable -> [Variable]
-instanciar mem (Variable id typ val sc) =
+--                memoria  id/tipo/escopo/valor
+instanciarVar :: [Variable] -> Variable -> [Variable]
+instanciarVar mem (Variable id typ val sc) =
     if (lookUpAux mem id sc) == Nothing
         then (Variable id typ val sc):mem
     else error "Variável tentando ser redeclarada"
