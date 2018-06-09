@@ -236,7 +236,7 @@ triTreeExprParser st (LeafToken (SymBoolEq _)) a c = res
     where
         (st1, (type1, val1)) = avaliarExpressao st a
         (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+        res = (st2, exprBoolEq (type1, val1) (type2, val2))
 
 -- a != b
 triTreeExprParser st (LeafToken (SymBoolNotEq _)) a c = res
@@ -292,21 +292,21 @@ triTreeExprParser st (LeafToken (SymOpMinus _)) a c = res
     where
         (st1, (type1, val1)) = avaliarExpressao st a
         (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+        res = (st2, exprMinus (type1, val1) (type2, val2))
 
 -- a * b
 triTreeExprParser st (LeafToken (SymOpMult _)) a c = res
     where
         (st1, (type1, val1)) = avaliarExpressao st a
         (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+        res = (st2, exprMult (type1, val1) (type2, val2))
 
 -- a / b
 triTreeExprParser st (LeafToken (SymOpDiv _)) a c = res
     where
         (st1, (type1, val1)) = avaliarExpressao st a
         (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+        res = (st2, exprDiv (type1, val1) (type2, val2))
 
 -- a ^ b
 triTreeExprParser st (LeafToken (SymOpExp _)) a c = res
@@ -320,7 +320,7 @@ triTreeExprParser st (LeafToken (SymOpMod _)) a c = res
     where
         (st1, (type1, val1)) = avaliarExpressao st a
         (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+        res = (st2, exprMod (type1, val1) (type2, val2))
 
 exprSum :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprSum (IntType, Int a) (IntType, Int b) = (IntType, Int (a + b))
@@ -331,6 +331,38 @@ exprSum (ListType t1, List a) (ListType t2, List b) =
         then (ListType t1, List (a ++ b))
     else error "Concatenação entre listas de tipos diferentes não é permitida"
 exprSum _ _ = error "Operação entre tipos não permitida"
+
+exprMinus :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprMinus (IntType, Int a) (IntType, Int b) = (IntType, Int (a - b))
+exprMinus (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a - b))
+exprMinus _ _ = error "Operação entre tipos não permitida"
+
+exprDiv :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprDiv (IntType, Int a) (IntType, Int b) = (IntType, Int (a `div` b))
+exprDiv (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a / b))
+exprDiv _ _ = error "Operação entre tipos não permitida"
+
+exprMod :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprMod (IntType, Int a) (IntType, Int b) = (IntType, Int (a `rem` b))
+exprMod _ _ = error "Operação entre tipos não permitida"
+
+exprMult :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprMult (IntType, Int a) (IntType, Int b) = (IntType, Int (a * b))
+exprMult (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a * b))
+exprMult _ _ = error "Operação entre tipos não permitida"
+
+exprBoolEq :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprBoolEq (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a == b))
+exprBoolEq (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a == b))
+-- converter int para float no final das próximas duas
+exprBoolEq (IntType, Float a) (FloatType, Float b) = (BoolType, Bool (a == b))
+exprBoolEq (FloatType, Float a) (IntType, Float b) = (BoolType, Bool (a == b))
+--
+exprBoolEq (StringType, String a) (StringType, String b) = (BoolType, Bool (a == b))
+exprBoolEq (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a == b))
+-- carece igualdade de ponteiros
+exprBoolEq (ListType t1, List a) (ListType t2, List b) = (BoolType, Bool (a == b))
+exprBoolEq _ _ = error "Operação entre tipos não permitida"
 
 --                   memoria       params             campos    escopo    memoria atualizada
 instanciarParams :: [Variable] -> [(Type, Value)] -> [Field] -> Scope -> [Variable]
