@@ -342,6 +342,16 @@ functionToken = tokenPrim show update_pos get_token where
   get_token (FunctionTok pos) = Just (FunctionTok pos)
   get_token _              = Nothing
 
+newToken :: ParsecT [Token] st IO (Token)
+newToken = tokenPrim show update_pos get_token where
+  get_token (New pos) = Just (New pos)
+  get_token _            = Nothing
+
+deleteToken :: ParsecT [Token] st IO (Token)
+deleteToken = tokenPrim show update_pos get_token where
+  get_token (Delete pos)  = Just (Delete pos)
+  get_token _            = Nothing
+
 
 -- O que ele quis dizer com isso?
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos
