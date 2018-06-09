@@ -53,6 +53,8 @@ analisadorSemantico (UniTree NonTProgram a) (State table io) =
     where
         (State table2 io2) = analisadorSemantico a (State table io)
 
+-- decl
+analisadorSemantico (DualTree NonTDecl declType ids) (State table io) = error "não implementado"
 -- assign
 analisadorSemantico (TriTree NonTAssign a b c) (State table io) = error "não implementado"
 -- point to

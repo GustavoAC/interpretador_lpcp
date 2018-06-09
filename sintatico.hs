@@ -1,5 +1,5 @@
 -- Comente para executar o main local
-module Sintatico (TokenTree(..), NonTToken(..), parser) where
+-- module Sintatico (TokenTree(..), NonTToken(..), parser) where
 
 import Lexico
 import Text.Parsec
@@ -383,11 +383,6 @@ stmts = try (
 stmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 stmt = try (
   do
-   first <- condition
-   colon <- semicolonToken
-   return first
-  ) <|> try (
-  do
    first <- decl
    colon <- semicolonToken
    return first
@@ -462,7 +457,7 @@ assign = do
           a <- idToken
           b <- attribToken
           c <- expr0
-          return (TriTree NonTAssign (makeToken a) (makeToken b) c)
+          return (DualTree NonTAssign (makeToken a) c)
 
 loop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 loop = try (
@@ -473,25 +468,25 @@ loop = try (
 
 condition :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 condition = try (
-  -- if(<expr>) do <stmts> endif ...
+  -- if(<expr>) then <stmts> endif ...
   do
     ifsymb <- ifToken
     p1 <- openParenthToken
     e <- expr0
     p2 <- closeParenthToken
-    d <- doToken
+    d <- thenToken
     s <- stmts
     endifsymb <- endIfToken
     cond2 <- condition2 
     return (TriTree NonTIf e s cond2)
   ) <|> try (
-  -- if(<expr>) do <stmts> endif
+  -- if(<expr>) then <stmts> endif
   do
     ifsymb <- ifToken
     p1 <- openParenthToken
     e <- expr0
     p2 <- closeParenthToken
-    d <- doToken
+    d <- thenToken
     s <- stmts
     endifsymb <- endIfToken
     return (DualTree NonTIf e s)
@@ -499,33 +494,33 @@ condition = try (
 
 condition2 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 condition2 = try (
-  -- elif (<expr>) do <stmts> endelif <condition2>
+  -- elif (<expr>) then <stmts> endelif <condition2>
   do
     elifsymb <- elifToken
     p1 <- openParenthToken
     e <- expr0
     p2 <- closeParenthToken
-    d <- doToken
+    d <- thenToken
     s <- stmts
     endelifsymb <- endElifToken
     cond2 <- condition2 
     return (TriTree NonTElif e s cond2)
   ) <|> try (
-  -- elif (<expr>) do <stmts> endelif
+  -- elif (<expr>) then <stmts> endelif
   do
     elifsymb <- elifToken
     p1 <- openParenthToken
     e <- expr0
     p2 <- closeParenthToken
-    d <- doToken
+    d <- thenToken
     s <- stmts
     endelifsymb <- endElifToken
     return (DualTree NonTElif e s)
   ) <|> try (
-  -- else do <stmts> endelse
+  -- else then <stmts> endelse
   do
     elsesymb <- elseToken
-    d <- doToken
+    d <- thenToken
     s <- stmts
     endelsesymb <- endElseToken
     return (UniTree NonTElse s)
@@ -541,7 +536,7 @@ whileLoop = try (
     e <- doToken
     e <- stmts
     f <- endWhileToken
-    return (DualTree NonTWhile c e )
+    return (DualTree NonTWhile c e)
   )
 
 -- &&  ||
@@ -905,8 +900,8 @@ parser :: [Token] -> IO (Either ParseError TokenTree)
 parser tokens = runParserT program [] "Error message" tokens
 
 -- Descomente para usar o main local
--- main :: IO ()
--- main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
---             { Left err -> print err; 
---               Right ans -> print ans
---             }
+main :: IO ()
+main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
+            { Left err -> print err; 
+              Right ans -> print ans
+            }

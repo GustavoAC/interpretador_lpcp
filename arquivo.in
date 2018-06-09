@@ -1,8 +1,8 @@
-if (true) do
+if (true) then
 	a = 3;
 	b = 4;
-endif elif (true) do
+endif elif (true) then
 	c = 4;
-endelif else do
+endelif else then
 	d = 3;
 endelse
