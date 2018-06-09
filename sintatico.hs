@@ -19,6 +19,8 @@ data NonTToken =
   NonTStatement |
   NonTAssign |
   NonTIf |
+  NonTElse |
+  NonTElif |
   NonTWhile |
   NonTExpr |
   NonTInvokeFunction |
@@ -31,7 +33,9 @@ data NonTToken =
   NonTParams |
   NonTParam |
   NonTListIndex |
-  NonTIndex
+  NonTIndex |
+  NonTDecl |
+  NonTListIds
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
@@ -313,6 +317,11 @@ semicolonToken = tokenPrim show update_pos get_token where
   get_token (Semicolon pos) = Just (Semicolon pos)
   get_token _               = Nothing
 
+commaToken :: ParsecT [Token] st IO (Token)
+commaToken = tokenPrim show update_pos get_token where
+  get_token (Comma pos) = Just (Comma pos)
+  get_token _               = Nothing
+
 attribToken :: ParsecT [Token] st IO (Token)
 attribToken = tokenPrim show update_pos get_token where
   get_token (Attrib pos) = Just (Attrib pos)
@@ -332,6 +341,16 @@ functionToken :: ParsecT [Token] st IO (Token)
 functionToken = tokenPrim show update_pos get_token where
   get_token (FunctionTok pos) = Just (FunctionTok pos)
   get_token _              = Nothing
+
+newToken :: ParsecT [Token] st IO (Token)
+newToken = tokenPrim show update_pos get_token where
+  get_token (New pos) = Just (New pos)
+  get_token _            = Nothing
+
+deleteToken :: ParsecT [Token] st IO (Token)
+deleteToken = tokenPrim show update_pos get_token where
+  get_token (Delete pos)  = Just (Delete pos)
+  get_token _            = Nothing
 
 
 -- O que ele quis dizer com isso?
@@ -362,7 +381,17 @@ stmts = try (
   )
 
 stmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-stmt = try(
+stmt = try (
+  do
+   first <- condition
+   colon <- semicolonToken
+   return first
+  ) <|> try (
+  do
+   first <- decl
+   colon <- semicolonToken
+   return first
+  ) <|> try (
   do
    first <- assign
    colon <- semicolonToken
@@ -371,7 +400,62 @@ stmt = try(
   do
     first <- loop
     return first
+  ) <|> try (
+  do
+    first <- condition
+    return first
   )
+
+decl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+decl = try (
+  do 
+    type_token <- types
+    id <- listIds
+    return ( DualTree NonTDecl type_token id)  
+  )
+
+listIds :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+listIds = try (
+  -- a = algo
+  do 
+    a <- assign
+    return a
+  ) <|> try (
+  -- a, ...
+  do 
+    id <- idToken
+    v <- commaToken
+    list <- listIds
+    return (DualTree NonTListIds (makeToken id) list)
+  ) <|> try (
+  -- a
+  do
+    id <- idToken
+    return (LeafToken id)
+  )
+
+types :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+types = try (
+    do
+      t <- typeIntToken
+      return (LeafToken t)
+    ) <|> try (
+    do 
+      t <- typeFloatToken
+      return (LeafToken t)
+    ) <|> try (
+    do 
+      t <- typeStringToken
+      return (LeafToken t)
+    ) <|> try (
+    do
+      t <- typePointerToken
+      return (LeafToken t)
+    ) <|> (
+    do
+      t <- typeBooleanToken
+      return (LeafToken t)
+    )
 
 assign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 assign = do
@@ -385,7 +469,67 @@ loop = try (
   do
     while <- whileLoop
     return while
-  ) -- acrescentar for futuramente
+  ) -- to do acrescentar for futuramente
+
+condition :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+condition = try (
+  -- if(<expr>) do <stmts> endif ...
+  do
+    ifsymb <- ifToken
+    p1 <- openParenthToken
+    e <- expr0
+    p2 <- closeParenthToken
+    d <- doToken
+    s <- stmts
+    endifsymb <- endIfToken
+    cond2 <- condition2 
+    return (TriTree NonTIf e s cond2)
+  ) <|> try (
+  -- if(<expr>) do <stmts> endif
+  do
+    ifsymb <- ifToken
+    p1 <- openParenthToken
+    e <- expr0
+    p2 <- closeParenthToken
+    d <- doToken
+    s <- stmts
+    endifsymb <- endIfToken
+    return (DualTree NonTIf e s)
+  )
+
+condition2 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+condition2 = try (
+  -- elif (<expr>) do <stmts> endelif <condition2>
+  do
+    elifsymb <- elifToken
+    p1 <- openParenthToken
+    e <- expr0
+    p2 <- closeParenthToken
+    d <- doToken
+    s <- stmts
+    endelifsymb <- endElifToken
+    cond2 <- condition2 
+    return (TriTree NonTElif e s cond2)
+  ) <|> try (
+  -- elif (<expr>) do <stmts> endelif
+  do
+    elifsymb <- elifToken
+    p1 <- openParenthToken
+    e <- expr0
+    p2 <- closeParenthToken
+    d <- doToken
+    s <- stmts
+    endelifsymb <- endElifToken
+    return (DualTree NonTElif e s)
+  ) <|> try (
+  -- else do <stmts> endelse
+  do
+    elsesymb <- elseToken
+    d <- doToken
+    s <- stmts
+    endelsesymb <- endElseToken
+    return (UniTree NonTElse s)
+  )
 
 whileLoop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 whileLoop = try (
@@ -519,7 +663,8 @@ expr3 = try (
   )
 
 expr3Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-expr3Ops = (do
+expr3Ops = (
+  do
     sym <- symOpPlusToken
     return (makeToken sym)
   ) <|> (do
@@ -550,7 +695,8 @@ expr4 = try (
   )
  
 expr4Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-expr4Ops = (do
+expr4Ops = (
+  do
     sym <- symOpMultToken
     return (makeToken sym)
   ) <|> (do
@@ -585,7 +731,8 @@ expr5 = try (
   )
 
 expr5Ops :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-expr5Ops = (do
+expr5Ops = (
+  do
     sym <- symOpExpToken
     return (makeToken sym)
   )
@@ -642,13 +789,12 @@ exprFinalIds = try (
   do
     a <- symBoolFalseToken
     return (LeafToken a)
-  
   )
 
 -- Chamada de procedimento
 callProcedure :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 callProcedure = try (
-  -- nomeProcedimento(int a, int b, ...) 
+  -- nomeProcedimento(a, b, ...) 
   do
     name <- idToken
     a <- openParenthToken
@@ -688,7 +834,7 @@ listParam = try (
   -- param, ... , param
   do
     a <- expr0
-    b <- semicolonToken
+    b <- commaToken
     c <- listParam
     return (DualTree NonTParams a c) -- ?
   ) <|> (

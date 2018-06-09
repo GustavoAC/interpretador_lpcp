@@ -22,6 +22,7 @@ tokens :-
   $digit+\.$digit+                            { \p s -> FloatLit p (read s) }
   $digit+                                     { \p s -> IntLit p (read s) }
   ";"                                         { \p s -> Semicolon p}
+  ","                                         { \p s -> Comma p}
   \=\=                                      { \p s -> SymBoolEq p }
   \!\=                                      { \p s -> SymBoolNotEq p }
   \<\=                                      { \p s -> SymBoolLessThanEq p }
@@ -66,6 +67,8 @@ tokens :-
   return                                          { \p s -> Return p }
   break                                           { \p s -> Break p }
   continue                                        { \p s -> Continue p }
+  new                                             { \p s -> New p }
+  delete                                          { \p s -> Delete p }
   $alpha [$alpha $digit \_ \']*               { \p s -> Id p s }
   \" $alpha [$alpha $digit ! \_ \']* \"       { \p s -> StrLit p s }
 {
@@ -87,6 +90,7 @@ data Token =
   OpenScope AlexPosn |
   CloseScope AlexPosn |
   Semicolon AlexPosn     |
+  Comma AlexPosn        |
   SymPtrOp AlexPosn     |
   SymAdressOp AlexPosn     |
   Print AlexPosn            |
@@ -107,6 +111,8 @@ data Token =
   Return AlexPosn                  |
   Break AlexPosn                   |
   Continue AlexPosn                |
+  New AlexPosn                |
+  Delete AlexPosn                |
   FloatLit AlexPosn Float |
   IntLit AlexPosn Int     |
   StrLit AlexPosn String  |
