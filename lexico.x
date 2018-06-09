@@ -19,6 +19,7 @@ tokens :-
   string                                      { \p s -> TypeString p }
   ptr                                         { \p s -> TypePointer p }
   bool                                        { \p s -> TypeBoolean p }
+  list                                        { \p s -> TypeList p }
   $digit+\.$digit+                            { \p s -> FloatLit p (read s) }
   $digit+                                     { \p s -> IntLit p (read s) }
   ";"                                         { \p s -> Semicolon p}
@@ -82,6 +83,7 @@ data Token =
   TypeString AlexPosn        |
   TypePointer AlexPosn        |
   TypeBoolean AlexPosn        |
+  TypeList AlexPosn        |
   Attrib AlexPosn         |
   OpenParenth AlexPosn |
   CloseParenth AlexPosn |

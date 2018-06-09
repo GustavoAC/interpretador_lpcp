@@ -71,6 +71,11 @@ typeBooleanToken = tokenPrim show update_pos get_token where
   get_token (TypeBoolean pos) = Just (TypeBoolean pos)
   get_token _                 = Nothing
 
+typeListToken :: ParsecT [Token] st IO (Token)
+typeListToken = tokenPrim show update_pos get_token where
+  get_token (TypeList pos) = Just (TypeList pos)
+  get_token _                 = Nothing
+
 -- 
 -- Literais
 -- 
