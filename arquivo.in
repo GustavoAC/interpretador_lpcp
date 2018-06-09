@@ -1,8 +1,1 @@
-if (true) do
-	a = 3;
-	b = 4;
-endif elif (true) do
-	c = 4;
-endelif else do
-	d = 3;
-endelse
+[[ptr [teste_struct]]] a = 3, b, c = 3, s = 4, teste;
