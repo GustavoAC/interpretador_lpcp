@@ -36,7 +36,10 @@ data NonTToken =
   NonTIndex |
   NonTDecl |
   NonTPrint |
-  NonTListIds
+  NonTListIds |
+  NonTPtrType |
+  NonTListType |
+  NonTStruct
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
@@ -70,6 +73,11 @@ typePointerToken = tokenPrim show update_pos get_token where
 typeBooleanToken :: ParsecT [Token] st IO (Token)
 typeBooleanToken = tokenPrim show update_pos get_token where
   get_token (TypeBoolean pos) = Just (TypeBoolean pos)
+  get_token _                 = Nothing
+
+typeListToken :: ParsecT [Token] st IO (Token)
+typeListToken = tokenPrim show update_pos get_token where
+  get_token (TypeList pos) = Just (TypeList pos)
   get_token _                 = Nothing
 
 -- 
@@ -418,6 +426,13 @@ decl = try (
 
 listIds :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 listIds = try (
+  -- a = algo, ...
+  do 
+    id <- assign
+    v <- commaToken
+    list <- listIds
+    return (DualTree NonTListIds id list)
+  ) <|> try (
   -- a = algo
   do 
     a <- assign
@@ -439,6 +454,17 @@ listIds = try (
 types :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 types = try (
     do
+      t <- openBracketToken
+      t2 <- types
+      t3 <- closeBracketToken
+      return (UniTree NonTListType t2)
+    ) <|> try (
+    do
+      t <- typePointerToken
+      t2 <- types
+      return (UniTree NonTPtrType t2)
+    ) <|> try (
+    do
       t <- typeIntToken
       return (LeafToken t)
     ) <|> try (
@@ -451,12 +477,12 @@ types = try (
       return (LeafToken t)
     ) <|> try (
     do
-      t <- typePointerToken
+      t <- typeBooleanToken
       return (LeafToken t)
     ) <|> (
     do
-      t <- typeBooleanToken
-      return (LeafToken t)
+      id <- idToken
+      return (UniTree NonTStruct (makeToken id))
     )
 
 assign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
