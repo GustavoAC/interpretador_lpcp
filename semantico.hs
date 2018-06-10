@@ -38,7 +38,7 @@ data Value = Int Int |
 data FieldInstance = FieldInstance Field Value deriving (Eq, Show)
 
 emptyState :: State
-emptyState = State (SymbolTable [] [] [] [] (Memory [])) (return ())
+emptyState = State (SymbolTable [] [] [] [(Scope ("main", 1) ("main", 1))] (Memory [])) (return ())
 
 inicAnalisadorSemantico :: TokenTree -> IO()
 inicAnalisadorSemantico tree = getAnalisadorIO (analisadorSemantico tree emptyState)
@@ -56,7 +56,9 @@ analisadorSemantico (UniTree NonTProgram a) (State table io) =
 -- decl
 analisadorSemantico (DualTree NonTDecl declType ids) st = declareMany st (parseType declType) ids
 -- assign
-analisadorSemantico (DualTree NonTAssign a c) (State table io) = assignToId st a c
+analisadorSemantico (DualTree NonTAssign a c) st = assignToId st a c
+-- print
+analisadorSemantico (UniTree NonTPrint params) st = printAll st params
 -- point to
 -- analisadorSemantico (LeafToken Continue) (State table io) = error "não implementado"
 -- for
@@ -64,7 +66,7 @@ analisadorSemantico (DualTree NonTAssign a c) (State table io) = assignToId st a
 -- while
 analisadorSemantico (DualTree NonTWhile a b) (State table io) = error "não implementado"
 -- if 
-analisadorSemantico (TriTree NonTIf a b c) (State table io) = error "não implementado"
+analisadorSemantico (TriTree NonTIf a b c) st = resolveIfCondition st a b c
 -- procNoArgs
 analisadorSemantico (UniTree NonTCallProcedure a) (State table io) = error "não implementado"
 -- procArgs
@@ -100,14 +102,14 @@ analisadorSemantico (None) st = st
 
 -- resta declarações com assigns
 declareMany :: State -> Type -> TokenTree -> State
-declareMany st typ (DualTree NonTListIds (Id _ id) rest) =
+declareMany st typ (DualTree NonTListIds (LeafToken (Id _ id)) rest) =
     declareMany finalSt typ rest
     where
         (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st
         newVar = Variable id typ (defaultVal typ) currScope
         finalMem = instanciarVar mem newVar
         finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
-declareMany st typ (Id _ id) = finalSt
+declareMany st typ (LeafToken (Id _ id)) = finalSt
     where
         (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st
         newVar = Variable id typ (defaultVal typ) currScope
@@ -119,26 +121,27 @@ defaultVal IntType = Int 0
 defaultVal FloatType = Float 0.0
 defaultVal StringType = String []
 defaultVal BoolType = Bool False
-defaultVal PointerType _ = Pointer [] (Scope ([],0) ([],0))
-defaultVal ListType _ = List []
-defaultVal StructType _ = StructVal []
+defaultVal (PointerType _) = Pointer [] (Scope ([],0) ([],0))
+defaultVal (ListType _) = List []
+defaultVal (StructType _) = StructVal []
 
 parseType :: TokenTree -> Type
-parseType (UniTree NonTListType a) = ListType (parseType a)
-parseType (UniTree NonTPtrType a) = PointerType (parseType a)
-parseType (UniTree NonTStructType (Id _ a) = StructType a
-parseType (TokenTree TypeInt _) = IntType
-parseType (TokenTree TypeFloat _) = FloatType
-parseType (TokenTree TypeString _) = StringType
-parseType (TokenTree TypeBoolean _) = BoolType
+-- parseType (UniTree NonTListType a) = ListType (parseType a) -- DESCOMENTAR ESSA LINHA QUANDO LIST TYPE ESTIVER COMPLETO
+-- parseType (UniTree NonTPtrType a) = PointerType (parseType a) -- DESCOMENTAR ESSA LINHA QUANDO POINTER TYPE ESTIVER COMPLETO
+-- parseType (UniTree NonTStructType (Id _ a)) = StructType a  -- DESCOMENTAR ESSA LINHA QUANDO STRUCT TYPE ESTIVER COMPLETO
+parseType (LeafToken (TypeInt _)) = IntType
+parseType (LeafToken (TypeFloat _)) = FloatType
+parseType (LeafToken (TypeString _)) = StringType
+parseType (LeafToken (TypeBoolean _)) = BoolType
+parseType _ = error "Erro inesperado em parseType"
 
 assignToId :: State -> TokenTree -> TokenTree -> State
 assignToId st id expr = finalState
     where
-        exprRes = avaliarExpressao expr
-        (st1, finalVal) = criarValorParaAtribuicao st id exprRes
-        (State (SymbolTable a b c d (Memory mem)) io) = st1
-        finalMem = instanciarVar mem finalVal
+        (st1, exprRes) = avaliarExpressao st expr
+        (st2, finalVal) = criarValorParaAtribuicao st1 id exprRes
+        (State (SymbolTable a b c d (Memory mem)) io) = st2
+        finalMem = atribuirVar mem finalVal
         finalState = (State (SymbolTable a b c d (Memory finalMem)) io)
 
 -- TODO: TESTAR FAMÍLIA DE FUNÇÕES STARTPROCEDURE
@@ -205,6 +208,36 @@ cleanScopeFromMem ((Variable id typ val valEsc):mem) esc =
         then cleanScopeFromMem mem esc
     else cleanScopeFromMem ((Variable id typ val valEsc):mem) esc
 
+--               estadoInicial condição       bloco        resto      final
+resolveIfCondition :: State -> TokenTree -> TokenTree -> TokenTree -> State
+resolveIfCondition st cond statements None =
+    if (solvedCond) then
+        analisadorSemantico statements finalState
+    else
+        finalState
+    where
+        (finalState, solvedCond) = checkCondition st cond
+resolveIfCondition st cond statements (UniTree NonTElse elseStmts) =
+    if (solvedCond) then
+        analisadorSemantico statements finalState
+    else
+        analisadorSemantico elseStmts finalState
+    where
+        (finalState, solvedCond) = checkCondition st cond
+resolveIfCondition st cond statements (TriTree NonTIf nextCond nextStmts nextBlock) =
+    if (solvedCond) then
+        analisadorSemantico statements finalState
+    else
+        resolveIfCondition finalState nextCond nextStmts nextBlock
+    where
+        (finalState, solvedCond) = checkCondition st cond
+
+checkCondition :: State -> TokenTree -> (State, Bool)
+checkCondition st cond = case exprRes of
+    (finalState, (BoolType, (Bool res))) -> (finalState, res)
+    _ -> error "A expressão utilizada na condição deve ser do tipo bool"
+    where
+        exprRes = avaliarExpressao st cond
 -- Como funções podem ser chamadas de dentro de expressões e funções podem modificar o
 -- estado, então o estado todo tem que ser passado pra o avaliador de expr
 --                 estado    arvoreExpr   estadofinal e valor encontrado
@@ -215,6 +248,8 @@ avaliarExpressao st tree = case tree of
         IntLit _ v -> (st, (IntType, Int v))
         FloatLit _ v -> (st, (FloatType, Float v))
         StrLit _ v -> (st, (StringType, String v))
+        SymBoolTrue _ -> (st, (BoolType, Bool True))
+        SymBoolFalse _ -> (st, (BoolType, Bool False))
     UniTree nonT a -> case nonT of
         NonTInvokeFunction -> error "não implementado ainda" -- startProcedure st a [] -- modificar para startFunction
         NonTId -> avaliarExpressaoParseId st a
@@ -431,16 +466,16 @@ instanciarVar mem (Variable id typ val sc) =
 
 -- TODO: NÃO TESTADA 
 --           memoria  id/tipo/escopo/valor
-atribuir :: [Variable] -> Variable -> [Variable]
-atribuir [] _ = error "Variável não declarada"
-atribuir ((Variable vId vTyp vVal vSc):mem) (Variable id typ val sc) =
+atribuirVar :: [Variable] -> Variable -> [Variable]
+atribuirVar [] _ = error "Variável não declarada"
+atribuirVar ((Variable vId vTyp vVal vSc):mem) (Variable id typ val sc) =
     if vId == id && vSc == sc
         then if vTyp == typ
             then ((Variable vId vTyp val vSc):mem)
         else 
             error "Tipo incorreto"
     else 
-        (Variable vId vTyp vVal vSc):(atribuir mem (Variable id typ val sc))
+        (Variable vId vTyp vVal vSc):(atribuirVar mem (Variable id typ val sc))
 
 -- TODO: Testar toda a família de funções criarValorParaAtribuicao
 -- Essa função faz um abuso do tipo Variable, reutilizando seus campos pra armazenar
@@ -559,27 +594,24 @@ listFromToEnd _ _ = error "Out of bounds" -- implica que a lista é vazia e indi
 
 -- TODO: NÃO TESTADA
 printAll :: State -> TokenTree -> State
-printAll st (UniTree NonTExpr expr) = (State table finalIO)
+printAll st (DualTree NonTParams expr next) = printAll st1 next
     where
-        ((State table io), (typ, val)) = avaliarExpressao st expr
-        finalIO = io >> (printOne val)
-
---                    NonTPrint
-printAll st (DualTree NonTExpr (UniTree NonTExpr expr) next) = stFinal
+        ((State midTable midIO), (typ, val)) = avaliarExpressao st expr
+        nextIO = midIO >> (printOne val)
+        st1 = (State midTable nextIO)
+printAll st (UniTree NonTParam expr) = (State midTable finalIO)
     where
-        ((State table io), (typ, val)) = avaliarExpressao st expr
-        finalIO = io >> (printOne val)
-        stFinal = (printAll (State table finalIO) next)
-
+        ((State midTable midIO), (typ, val)) = avaliarExpressao st expr
+        finalIO = midIO >> (printOne val) >> (putStrLn "")
 
 printOne :: Value -> IO()
 printOne val = case val of
-    (Int a) -> print a
-    (Float a) -> print a
-    (String a) -> putStrLn a
-    (Bool a) -> print a
-    (Pointer _ _) -> putStrLn "-Ponteiro-"
-    (List a) -> printList a
+    (Int a) -> putStr ((show a)++" ") 
+    (Float a) -> putStr ((show a)++" ") 
+    (String a) -> putStr a
+    (Bool a) -> putStr ((show a)++" ") 
+    (Pointer _ _) -> putStr "-Ponteiro- "
+    (List a) -> (putStr "[ ") >> (printList a) >> (putStr "]")
     _ -> error "Impossível imprimir structs"
 
 printList :: [Value] -> IO()

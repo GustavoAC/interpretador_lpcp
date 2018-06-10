@@ -1,5 +1,5 @@
 -- Comente para executar o main local
--- module Sintatico (TokenTree(..), NonTToken(..), parser) where
+module Sintatico (TokenTree(..), NonTToken(..), parser) where
 
 import Lexico
 import Text.Parsec
@@ -35,6 +35,7 @@ data NonTToken =
   NonTListIndex |
   NonTIndex |
   NonTDecl |
+  NonTPrint |
   NonTListIds
   deriving (Eq, Show)
 
@@ -399,6 +400,12 @@ stmt = try (
   do
     first <- condition
     return first
+  ) <|> try (
+  do 
+    first <- printToken
+    things <- listParam
+    colon <- semicolonToken
+    return (UniTree NonTPrint things)
   )
 
 decl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -454,10 +461,10 @@ types = try (
 
 assign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 assign = do
-          a <- idToken
+          a <- exprId
           b <- attribToken
           c <- expr0
-          return (DualTree NonTAssign (makeToken a) c)
+          return (DualTree NonTAssign (UniTree NonTId a) c)
 
 loop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 loop = try (
@@ -489,7 +496,7 @@ condition = try (
     d <- thenToken
     s <- stmts
     endifsymb <- endIfToken
-    return (DualTree NonTIf e s)
+    return (TriTree NonTIf e s None)
   )
 
 condition2 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -504,7 +511,7 @@ condition2 = try (
     s <- stmts
     endelifsymb <- endElifToken
     cond2 <- condition2 
-    return (TriTree NonTElif e s cond2)
+    return (TriTree NonTIf e s cond2)
   ) <|> try (
   -- elif (<expr>) then <stmts> endelif
   do
@@ -515,7 +522,7 @@ condition2 = try (
     d <- thenToken
     s <- stmts
     endelifsymb <- endElifToken
-    return (DualTree NonTElif e s)
+    return (TriTree NonTIf e s None)
   ) <|> try (
   -- else then <stmts> endelse
   do
@@ -900,8 +907,8 @@ parser :: [Token] -> IO (Either ParseError TokenTree)
 parser tokens = runParserT program [] "Error message" tokens
 
 -- Descomente para usar o main local
-main :: IO ()
-main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
-            { Left err -> print err; 
-              Right ans -> print ans
-            }
+-- main :: IO ()
+-- main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
+--             { Left err -> print err; 
+--               Right ans -> print ans
+--             }

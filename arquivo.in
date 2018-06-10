@@ -1,8 +1,8 @@
-if (true) then
+int a;
+if (false) then
 	a = 3;
-	b = 4;
-endif elif (true) then
-	c = 4;
-endelif else then
-	d = 3;
+	print a;
+endif else then
+	a = 5;
+	print a;
 endelse
