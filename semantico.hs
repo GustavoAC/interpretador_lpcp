@@ -365,7 +365,7 @@ triTreeExprParser st (LeafToken (SymBoolNotEq _)) a c = res
     where
         (st1, (type1, val1)) = avaliarExpressao st a
         (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+        res = (st2, exprBoolNotEq (type1, val1) (type2, val2)) -- alterar função
 
 -- a <= b
 triTreeExprParser st (LeafToken (SymBoolLessThanEq _)) a c = res
@@ -476,15 +476,24 @@ exprMult a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show
 exprBoolEq :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprBoolEq (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a == b))
 exprBoolEq (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a == b))
--- converter int para float no final das próximas duas
-exprBoolEq (IntType, Float a) (FloatType, Float b) = (BoolType, Bool (a == b))
-exprBoolEq (FloatType, Float a) (IntType, Float b) = (BoolType, Bool (a == b))
---
+exprBoolEq (IntType, Int a) (FloatType, Float b) = (BoolType, Bool ( (toFloat a) == b))
+exprBoolEq (FloatType, Float a) (IntType, Int b) = (BoolType, Bool (a == (toFloat b)))
 exprBoolEq (StringType, String a) (StringType, String b) = (BoolType, Bool (a == b))
 exprBoolEq (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a == b))
 -- carece igualdade de ponteiros
 exprBoolEq (ListType t1, List a) (ListType t2, List b) = (BoolType, Bool (a == b))
 exprBoolEq a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+
+exprBoolNotEq :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprBoolNotEq (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a /= b))
+exprBoolNotEq (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a /= b))
+exprBoolNotEq (IntType, Int a) (FloatType, Float b) = (BoolType, Bool ( toInteger a /= b))
+exprBoolNotEq (FloatType, Float a) (IntType, Int b) = (BoolType, Bool (a /= toInteger b))
+exprBoolNotEq (StringType, String a) (StringType, String b) = (BoolType, Bool (a /= b))
+exprBoolNotEq (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a /= b))
+-- carece não igualdade de ponteiros
+exprBoolNotEq (ListType t1, List a) (ListType t2, List b) = (BoolType, Bool (a /= b))
+exprBoolNotEq a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 --                   memoria       params             campos    escopo    memoria atualizada
 instanciarParams :: [Variable] -> [(Type, Value)] -> [Field] -> Scope -> [Variable]
