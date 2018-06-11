@@ -1,8 +1,13 @@
-int a;
+float a = 5.0;
 if (false) then
+	int a;
 	a = 3;
-	print a;
-endif else then
-	a = 5;
-	print a;
+endif elif (false) then
+	if (false) then
+		a = 4.0;
+	endif else then
+		a = 2.0;
+	endelse
+endelif else then
+	int a = 3;
 endelse

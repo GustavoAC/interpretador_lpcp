@@ -109,12 +109,32 @@ declareMany st typ (DualTree NonTListIds (LeafToken (Id _ id)) rest) =
         newVar = Variable id typ (defaultVal typ) currScope
         finalMem = instanciarVar mem newVar
         finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
+declareMany st typ (DualTree NonTListIds (DualTree NonTAssign (UniTree NonTId (LeafToken (Id _ id))) expr) rest) =
+    declareMany finalSt typ rest
+    where
+        (st1, (exprTyp, exprVal)) = avaliarExpressao st expr
+        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st1
+        finalMem = declareWithVal mem id typ exprTyp exprVal currScope
+        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
 declareMany st typ (LeafToken (Id _ id)) = finalSt
     where
         (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st
         newVar = Variable id typ (defaultVal typ) currScope
         finalMem = instanciarVar mem newVar
         finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
+declareMany st typ (DualTree NonTAssign (UniTree NonTId (LeafToken (Id _ id))) expr) = finalSt
+    where
+        (st1, (exprTyp, exprVal)) = avaliarExpressao st expr
+        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st1
+        finalMem = declareWithVal mem id typ exprTyp exprVal currScope
+        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
+        
+
+declareWithVal :: [Variable] -> String -> Type -> Type -> Value -> Scope -> [Variable]
+declareWithVal mem id expectedType realType val currScope =
+    if expectedType == realType then
+        instanciarVar mem (Variable id realType val currScope)
+    else error "Erro na declaração: Tipo da expressão não corresponde ao tipo declarado"
 
 defaultVal :: Type -> Value
 defaultVal IntType = Int 0
@@ -126,9 +146,9 @@ defaultVal (ListType _) = List []
 defaultVal (StructType _) = StructVal []
 
 parseType :: TokenTree -> Type
--- parseType (UniTree NonTListType a) = ListType (parseType a) -- DESCOMENTAR ESSA LINHA QUANDO LIST TYPE ESTIVER COMPLETO
--- parseType (UniTree NonTPtrType a) = PointerType (parseType a) -- DESCOMENTAR ESSA LINHA QUANDO POINTER TYPE ESTIVER COMPLETO
--- parseType (UniTree NonTStructType (Id _ a)) = StructType a  -- DESCOMENTAR ESSA LINHA QUANDO STRUCT TYPE ESTIVER COMPLETO
+parseType (UniTree NonTListType a) = ListType (parseType a)
+parseType (UniTree NonTPtrType a) = PointerType (parseType a)
+parseType (UniTree NonTStructType (LeafToken (Id _ id))) = StructType id
 parseType (LeafToken (TypeInt _)) = IntType
 parseType (LeafToken (TypeFloat _)) = FloatType
 parseType (LeafToken (TypeString _)) = StringType
@@ -155,7 +175,7 @@ startProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io
         -- acha o proc
         (Procedure _ fields procTree) = findProc procs procName (fieldfy params)
         -- gera proximoescopo
-        newStartingScopeDepth = findNextScopeDepth mem procName
+        newStartingScopeDepth = findNextScopeDepthFromMem mem procName
         newStartingScope = Scope (procName, newStartingScopeDepth) (procName, 1)
         -- instancia coisas do proc
         newMem = instanciarParams mem params fields newStartingScope
@@ -174,7 +194,7 @@ startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io)
         -- acha a func
         (Function _ retType fields funcTree) = findFunc funcs funcName (fieldfy params)
         -- gera proximoescopo
-        newStartingScopeDepth = findNextScopeDepth mem funcName
+        newStartingScopeDepth = findNextScopeDepthFromMem mem funcName
         newStartingScope = Scope (funcName, newStartingScopeDepth) (funcName, 1)
         -- instancia coisas da func
         newMem = instanciarParams mem params fields newStartingScope
@@ -188,9 +208,9 @@ startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io)
         res = ((State (SymbolTable structs procs funcs oldScope (Memory finalMem)) finalIo), returnedVal)
 
 -- Find next scope depth
-findNextScopeDepth :: [Variable] -> String -> Int
-findNextScopeDepth [] _ = 1
-findNextScopeDepth ((Variable _ _ _ (Scope (scName, scDepth) (_,_))):mem) name =
+findNextScopeDepthFromMem :: [Variable] -> String -> Int
+findNextScopeDepthFromMem [] _ = 1
+findNextScopeDepthFromMem ((Variable _ _ _ (Scope (scName, scDepth) (_,_))):mem) name =
     if scName == name then
         if (scDepth + 1) > res then
             scDepth + 1
@@ -199,34 +219,44 @@ findNextScopeDepth ((Variable _ _ _ (Scope (scName, scDepth) (_,_))):mem) name =
     else
         res
     where 
-        res = findNextScopeDepth mem name
+        res = findNextScopeDepthFromMem mem name
 
 cleanScopeFromMem :: [Variable] -> Scope -> [Variable]
 cleanScopeFromMem [] _ = []
 cleanScopeFromMem ((Variable id typ val valEsc):mem) esc =
     if valEsc == esc
         then cleanScopeFromMem mem esc
-    else cleanScopeFromMem ((Variable id typ val valEsc):mem) esc
+    else (Variable id typ val valEsc):(cleanScopeFromMem mem esc)
+
+startBlock :: TokenTree -> State -> String -> State
+startBlock stmts (State (SymbolTable a b c scopes mem) io) blocName = finalState
+    where
+
+        (Scope (func, funcDepth) (_, _)) = head scopes
+        nextScope = (Scope (func, funcDepth) (blocName, findNextScopeDepthFromScope scopes blocName))
+        (State (SymbolTable _ _ _ _ (Memory afterMem)) finalIO) = analisadorSemantico stmts (State (SymbolTable a b c (nextScope:scopes) mem) io)
+        finalMem = cleanScopeFromMem afterMem nextScope
+        finalState = (State (SymbolTable a b c scopes (Memory finalMem)) finalIO)
 
 --               estadoInicial condição       bloco        resto      final
 resolveIfCondition :: State -> TokenTree -> TokenTree -> TokenTree -> State
 resolveIfCondition st cond statements None =
     if (solvedCond) then
-        analisadorSemantico statements finalState
+        startBlock statements finalState "if"
     else
         finalState
     where
         (finalState, solvedCond) = checkCondition st cond
 resolveIfCondition st cond statements (UniTree NonTElse elseStmts) =
     if (solvedCond) then
-        analisadorSemantico statements finalState
+        startBlock statements finalState "if"
     else
-        analisadorSemantico elseStmts finalState
+        startBlock elseStmts finalState "if"
     where
         (finalState, solvedCond) = checkCondition st cond
 resolveIfCondition st cond statements (TriTree NonTIf nextCond nextStmts nextBlock) =
     if (solvedCond) then
-        analisadorSemantico statements finalState
+        startBlock statements finalState "if"
     else
         resolveIfCondition finalState nextCond nextStmts nextBlock
     where
@@ -238,6 +268,20 @@ checkCondition st cond = case exprRes of
     _ -> error "A expressão utilizada na condição deve ser do tipo bool"
     where
         exprRes = avaliarExpressao st cond
+
+findNextScopeDepthFromScope :: [Scope] -> String -> Int
+findNextScopeDepthFromScope [] _ = 1
+findNextScopeDepthFromScope ((Scope (scName, scDepth) (_,_)):scopes) name =
+    if scName == name then
+        if (scDepth + 1) > res then
+            scDepth + 1
+        else
+            res
+    else
+        res
+    where 
+        res = findNextScopeDepthFromScope scopes name
+
 -- Como funções podem ser chamadas de dentro de expressões e funções podem modificar o
 -- estado, então o estado todo tem que ser passado pra o avaliador de expr
 --                 estado    arvoreExpr   estadofinal e valor encontrado
@@ -408,26 +452,26 @@ exprSum (ListType t1, List a) (ListType t2, List b) =
     if t1 == t2 
         then (ListType t1, List (a ++ b))
     else error "Concatenação entre listas de tipos diferentes não é permitida"
-exprSum _ _ = error "Operação entre tipos não permitida"
+exprSum a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 exprMinus :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprMinus (IntType, Int a) (IntType, Int b) = (IntType, Int (a - b))
 exprMinus (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a - b))
-exprMinus _ _ = error "Operação entre tipos não permitida"
+exprMinus a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 exprDiv :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprDiv (IntType, Int a) (IntType, Int b) = (IntType, Int (a `div` b))
 exprDiv (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a / b))
-exprDiv _ _ = error "Operação entre tipos não permitida"
+exprDiv a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 exprMod :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprMod (IntType, Int a) (IntType, Int b) = (IntType, Int (a `rem` b))
-exprMod _ _ = error "Operação entre tipos não permitida"
+exprMod a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 exprMult :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprMult (IntType, Int a) (IntType, Int b) = (IntType, Int (a * b))
 exprMult (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a * b))
-exprMult _ _ = error "Operação entre tipos não permitida"
+exprMult a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 exprBoolEq :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprBoolEq (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a == b))
@@ -440,7 +484,7 @@ exprBoolEq (StringType, String a) (StringType, String b) = (BoolType, Bool (a ==
 exprBoolEq (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a == b))
 -- carece igualdade de ponteiros
 exprBoolEq (ListType t1, List a) (ListType t2, List b) = (BoolType, Bool (a == b))
-exprBoolEq _ _ = error "Operação entre tipos não permitida"
+exprBoolEq a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 --                   memoria       params             campos    escopo    memoria atualizada
 instanciarParams :: [Variable] -> [(Type, Value)] -> [Field] -> Scope -> [Variable]

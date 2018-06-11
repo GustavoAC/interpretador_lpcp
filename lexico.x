@@ -71,8 +71,13 @@ tokens :-
   new                                             { \p s -> New p }
   delete                                          { \p s -> Delete p }
   $alpha [$alpha $digit \_ \']*               { \p s -> Id p s }
-  \" $alpha [$alpha $digit ! \_ \']* \"       { \p s -> StrLit p s }
+  \" [$alpha $digit ! \_ \' $white]* \"       { \p s -> StrLit p (firstLast s) }
 {
+firstLast :: [a]->[a]
+firstLast [] = []
+firstLast [x] = []
+firstLast xs = tail (init xs)
+
 -- Each right-hand side has type :: AlexPosn -> String -> Token
 -- Some action helpers:
 

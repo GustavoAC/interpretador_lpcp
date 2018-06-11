@@ -39,7 +39,7 @@ data NonTToken =
   NonTListIds |
   NonTPtrType |
   NonTListType |
-  NonTStruct
+  NonTStructType
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
@@ -482,7 +482,7 @@ types = try (
     ) <|> (
     do
       id <- idToken
-      return (UniTree NonTStruct (makeToken id))
+      return (UniTree NonTStructType (makeToken id))
     )
 
 assign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
