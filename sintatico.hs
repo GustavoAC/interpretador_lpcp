@@ -17,6 +17,10 @@ data NonTToken =
   NonTProgram |
   NonTStatements |
   NonTStatement |
+  NonTFuncDecls |
+  NonTFuncDecl |
+  NonTProcDecl |
+  NonTVarDecls |
   NonTAssign |
   NonTIf |
   NonTElse |
@@ -371,11 +375,32 @@ update_pos pos _ []      = pos
 
 --         Parsec   input       state         output
 program :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-program = do
-            -- a <- funcDecs
-            b <- stmts
-            eof
-            return (UniTree NonTProgram b)
+program = try (
+  do
+    a <- regDecls
+    b <- funcDecls
+    c <- stmts
+    eof
+    return (TriTree NonTProgram a b c)
+  ) <|> try (
+  do
+    b <- funcDecls
+    c <- stmts
+    eof
+    return (DualTree NonTProgram b c)
+  ) <|> try (
+  do
+    a <- regDecls
+    c <- stmts
+    eof
+    return (DualTree NonTProgram a c)
+  ) <|> try (
+  do
+    c <- stmts
+    eof
+    return (UniTree NonTProgram c)
+  )
+  
 
 stmts :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 stmts = try (
@@ -391,24 +416,29 @@ stmts = try (
 
 stmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 stmt = try (
+  -- Declarações
   do
    first <- decl
    colon <- semicolonToken
    return first
   ) <|> try (
+  -- Atribuição
   do
    first <- assign
    colon <- semicolonToken
    return first
   ) <|> try (
+  -- Loops
   do
     first <- loop
     return first
   ) <|> try (
+  -- Condicionais
   do
     first <- condition
     return first
   ) <|> try (
+  -- print
   do 
     first <- printToken
     things <- listParam
@@ -422,6 +452,104 @@ decl = try (
     type_token <- types
     id <- listIds
     return ( DualTree NonTDecl type_token id)  
+  )
+
+funcDecls :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+funcDecls = try (
+  -- <funcDec> <funcDecls>
+  do
+    f_decl  <- funcDecl
+    f_decls <- funcDecls
+    return (DualTree NonTFuncDecls f_decl f_decls)
+  ) <|> try (
+  -- <procDec> <funcDecls>
+  do
+    p_decl  <- procDec
+    f_decls <- funcDecls
+    return (DualTree NonTFuncDecls p_decl f_decls)
+  ) <|> try (
+  -- <funcDec>
+  do
+    f_decl  <- funcDecl
+    return (UniTree NonTFuncDecls f_decl)
+  ) <|> try (
+  -- <procDec>
+  do
+    p_decl  <- procDec
+    return (UniTree NonTFuncDecls p_decl)
+  )
+
+funcDecl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+funcDecl = try (
+  -- function <id> (<varDecls>) : <Type> { <stmts> }
+  do
+    token  <- functionToken
+    id     <- idToken
+    p1     <- openParenthToken
+    list_p <- varDecls
+    p2     <- closeParenthToken
+    two_p  <- -- ":" token todo
+    t      <- types
+    s1     <- openScopeToken
+    stmts  <- stmts
+    s2     <- closeScopeToken
+    return (QuadTree NonTFuncDecl (makeToken id) list_p t stmts)
+  ) <|> try (
+  -- function <id> () : <Type> { <stmts> }
+  do
+    token  <- functionToken
+    id     <- idToken
+    p1     <- openParenthToken
+    p2     <- closeParenthToken
+    two_p  <- -- ":" token todo
+    t      <- types
+    s1     <- openScopeToken
+    stmts  <- stmts
+    s2     <- closeScopeToken
+    return (TriTree NonTFuncDecl (makeToken id) t stmts)
+  )
+
+procDec :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+procDec = try (
+  -- procedure <id> (<varDecls>) { <stmts> }
+  do
+    token  <- procedureToken
+    id     <- idToken
+    p1     <- openParenthToken
+    list_p <- varDecls
+    p2     <- closeParenthToken
+    s1     <- openScopeToken
+    stmts  <- stmts
+    s2     <- closeScopeToken
+    return (TriTree NonTProcDecl (makeToken id) list_p stmts)
+  ) <|> try (
+  -- procedure <id> () { <stmts> }
+  do
+    token  <- procedureToken
+    id     <- idToken
+    p1     <- openParenthToken
+    p2     <- closeParenthToken
+    s1     <- openScopeToken
+    stmts  <- stmts
+    s2     <- closeScopeToken
+    return (DualTree NonTProcDecl (makeToken id) stmts)
+  )
+
+varDecls :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+varDecls = try (
+  -- tipo id, id2 = 3, ..., idn ; tipo id = 'exemplo', id2, ..., idm ; tipo...
+  do
+    t        <- types
+    list_ids <- listIds
+    p        <- semicolonToken
+    v        <- varDecls
+    return (TriTree NonTVarDecls t list_ids v)
+  ) <|> try (
+  -- tipo id, id2 = 3, ..., idn
+  do
+    t        <- types
+    list_ids <- listIds
+    return (DualTree NonTVarDecls t list_ids)
   )
 
 listIds :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -578,7 +706,6 @@ whileLoop = try (
   )
 
 -- Não testado o for
-
 forLoop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 forLoop = try (
   do
@@ -783,7 +910,6 @@ expr4Ops = (
     sym <- symOpModToken
     return (makeToken sym)
   )
-
 
 -- ^
 expr5 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
