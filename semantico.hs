@@ -353,62 +353,6 @@ triTreeExprParser st (LeafToken (SymOpPlus _)) a c = res
         (st2, (type2, val2)) = avaliarExpressao st1 c
         res = (st2, exprSum (type1, val1) (type2, val2))
 
--- a == b
-triTreeExprParser st (LeafToken (SymBoolEq _)) a c = res
-    where
-        (st1, (type1, val1)) = avaliarExpressao st a
-        (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprBoolEq (type1, val1) (type2, val2))
-
--- a != b
-triTreeExprParser st (LeafToken (SymBoolNotEq _)) a c = res
-    where
-        (st1, (type1, val1)) = avaliarExpressao st a
-        (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprBoolNotEq (type1, val1) (type2, val2)) -- alterar função
-
--- a <= b
-triTreeExprParser st (LeafToken (SymBoolLessThanEq _)) a c = res
-    where
-        (st1, (type1, val1)) = avaliarExpressao st a
-        (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
-
--- a >= b
-triTreeExprParser st (LeafToken (SymBoolGreaterThanEq _)) a c = res
-    where
-        (st1, (type1, val1)) = avaliarExpressao st a
-        (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
-
--- a && b
-triTreeExprParser st (LeafToken (SymBoolAnd _)) a c = res
-    where
-        (st1, (type1, val1)) = avaliarExpressao st a
-        (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
-
--- a || b
-triTreeExprParser st (LeafToken (SymBoolOr _)) a c = res
-    where
-        (st1, (type1, val1)) = avaliarExpressao st a
-        (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
-
--- a < b
-triTreeExprParser st (LeafToken (SymBoolLessThan _)) a c = res
-    where
-        (st1, (type1, val1)) = avaliarExpressao st a
-        (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
-
--- a > b
-triTreeExprParser st (LeafToken (SymBoolGreaterThan _)) a c = res
-    where
-        (st1, (type1, val1)) = avaliarExpressao st a
-        (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
-
 -- a - b
 triTreeExprParser st (LeafToken (SymOpMinus _)) a c = res
     where
@@ -430,19 +374,75 @@ triTreeExprParser st (LeafToken (SymOpDiv _)) a c = res
         (st2, (type2, val2)) = avaliarExpressao st1 c
         res = (st2, exprDiv (type1, val1) (type2, val2))
 
--- a ^ b
-triTreeExprParser st (LeafToken (SymOpExp _)) a c = res
-    where
-        (st1, (type1, val1)) = avaliarExpressao st a
-        (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
-
 -- a % b
 triTreeExprParser st (LeafToken (SymOpMod _)) a c = res
     where
         (st1, (type1, val1)) = avaliarExpressao st a
         (st2, (type2, val2)) = avaliarExpressao st1 c
         res = (st2, exprMod (type1, val1) (type2, val2))
+
+-- a ^ b
+triTreeExprParser st (LeafToken (SymOpExp _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprExp (type1, val1) (type2, val2))
+
+-- a == b
+triTreeExprParser st (LeafToken (SymBoolEq _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprBoolEq (type1, val1) (type2, val2)) -- falta ponteiros
+
+-- a != b
+triTreeExprParser st (LeafToken (SymBoolNotEq _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprBoolNotEq (type1, val1) (type2, val2)) -- falta ponteiros
+
+-- a <= b
+triTreeExprParser st (LeafToken (SymBoolLessThanEq _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprBoolLessThanEq (type1, val1) (type2, val2))
+
+-- a < b
+triTreeExprParser st (LeafToken (SymBoolLessThan _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprBoolLessThan (type1, val1) (type2, val2)) 
+
+-- a >= b
+triTreeExprParser st (LeafToken (SymBoolGreaterThanEq _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprBoolGreaterThanEq (type1, val1) (type2, val2))
+
+-- a > b
+triTreeExprParser st (LeafToken (SymBoolGreaterThan _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprBoolGreaterThan (type1, val1) (type2, val2))
+
+-- a && b
+triTreeExprParser st (LeafToken (SymBoolAnd _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprBoolAnd (type1, val1) (type2, val2))
+
+-- a || b
+triTreeExprParser st (LeafToken (SymBoolOr _)) a c = res
+    where
+        (st1, (type1, val1)) = avaliarExpressao st a
+        (st2, (type2, val2)) = avaliarExpressao st1 c
+        res = (st2, exprBoolOr (type1, val1) (type2, val2))
 
 exprSum :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprSum (IntType, Int a) (IntType, Int b) = (IntType, Int (a + b))
@@ -459,6 +459,11 @@ exprMinus (IntType, Int a) (IntType, Int b) = (IntType, Int (a - b))
 exprMinus (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a - b))
 exprMinus a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
+exprMult :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprMult (IntType, Int a) (IntType, Int b) = (IntType, Int (a * b))
+exprMult (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a * b))
+exprMult a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+
 exprDiv :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprDiv (IntType, Int a) (IntType, Int b) = (IntType, Int (a `div` b))
 exprDiv (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a / b))
@@ -468,16 +473,21 @@ exprMod :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprMod (IntType, Int a) (IntType, Int b) = (IntType, Int (a `rem` b))
 exprMod a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
-exprMult :: (Type, Value) -> (Type, Value) -> (Type, Value)
-exprMult (IntType, Int a) (IntType, Int b) = (IntType, Int (a * b))
-exprMult (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a * b))
-exprMult a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+exprExp :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprExp (IntType, Int a) (IntType, Int b) = (IntType, Int (a ^ b))
+exprExp (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a ** b))
+exprExp (IntType, Int a) (FloatType, Float b) = (FloatType, Float ( intToFloat a ** b ))
+exprExp (FloatType, Float a) (IntType, Int b) = (FloatType, Float ( a ** intToFloat b ))
+exprExp a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+
+intToFloat :: Int -> Float
+intToFloat a = fromInteger (toInteger a) 
 
 exprBoolEq :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprBoolEq (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a == b))
 exprBoolEq (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a == b))
-exprBoolEq (IntType, Int a) (FloatType, Float b) = (BoolType, Bool ( (toFloat a) == b))
-exprBoolEq (FloatType, Float a) (IntType, Int b) = (BoolType, Bool (a == (toFloat b)))
+exprBoolEq (IntType, Int a) (FloatType, Float b) = (BoolType, Bool ( intToFloat a == b ))
+exprBoolEq (FloatType, Float a) (IntType, Int b) = (BoolType, Bool ( a == intToFloat b ))
 exprBoolEq (StringType, String a) (StringType, String b) = (BoolType, Bool (a == b))
 exprBoolEq (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a == b))
 -- carece igualdade de ponteiros
@@ -487,13 +497,41 @@ exprBoolEq a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (sh
 exprBoolNotEq :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprBoolNotEq (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a /= b))
 exprBoolNotEq (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a /= b))
-exprBoolNotEq (IntType, Int a) (FloatType, Float b) = (BoolType, Bool ( toInteger a /= b))
-exprBoolNotEq (FloatType, Float a) (IntType, Int b) = (BoolType, Bool (a /= toInteger b))
+exprBoolNotEq (IntType, Int a) (FloatType, Float b) = (BoolType, Bool ( intToFloat a /= b ))
+exprBoolNotEq (FloatType, Float a) (IntType, Int b) = (BoolType, Bool ( a /= intToFloat b ))
 exprBoolNotEq (StringType, String a) (StringType, String b) = (BoolType, Bool (a /= b))
 exprBoolNotEq (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a /= b))
 -- carece não igualdade de ponteiros
 exprBoolNotEq (ListType t1, List a) (ListType t2, List b) = (BoolType, Bool (a /= b))
 exprBoolNotEq a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+
+exprBoolLessThanEq :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprBoolLessThanEq (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a <= b))
+exprBoolLessThanEq (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a <= b))
+exprBoolLessThanEq a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+
+exprBoolLessThan :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprBoolLessThan (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a < b))
+exprBoolLessThan (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a < b))
+exprBoolLessThan a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+
+exprBoolGreaterThanEq :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprBoolGreaterThanEq (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a >= b))
+exprBoolGreaterThanEq (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a >= b))
+exprBoolGreaterThanEq a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+
+exprBoolGreaterThan :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprBoolGreaterThan (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a > b))
+exprBoolGreaterThan (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a > b))
+exprBoolGreaterThan a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+
+exprBoolAnd :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprBoolAnd (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a && b))
+exprBoolAnd a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+
+exprBoolOr :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprBoolOr (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a || b))
+exprBoolOr a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 --                   memoria       params             campos    escopo    memoria atualizada
 instanciarParams :: [Variable] -> [(Type, Value)] -> [Field] -> Scope -> [Variable]
