@@ -1,13 +1,6 @@
-float a = 5.0;
-if (false) then
-	int a;
-	a = 3;
-endif elif (false) then
-	if (false) then
-		a = 4.0;
-	endif else then
-		a = 2.0;
-	endelse
-endelif else then
-	int a = 3;
-endelse
+int a = 0;
+while (a < 5) do
+	int b = a;
+	print b;
+	a = a + 1;
+endwhile

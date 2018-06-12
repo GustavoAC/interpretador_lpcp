@@ -497,7 +497,12 @@ loop = try (
   do
     while <- whileLoop
     return while
-  ) -- to do acrescentar for futuramente
+  ) <|> (
+  do 
+    for <- forLoop
+    return for 
+  )
+  -- to do acrescentar for futuramente
 
 condition :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 condition = try (
@@ -569,6 +574,50 @@ whileLoop = try (
     e <- doToken
     e <- stmts
     f <- endWhileToken
+    return (DualTree NonTWhile c e)
+  )
+
+-- Não testado o for
+
+forLoop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+forLoop = try (
+  do
+    a <- forToken
+    b <- openParenthToken
+    c <- assign
+    d <- semicolonToken
+    e <- expr0
+    e <- semicolonToken
+    f <- expr0
+    g <- closeParenthToken
+    h <- stmts
+    i <- endForToken
+    return (DualTree NonTWhile c e)
+  ) <|> try (
+  do
+    a <- forToken
+    b <- openParenthToken
+    c <- decl -- ver essa parte da declaração dentro da função porque seria apenas uma variável e não a lista
+    d <- semicolonToken
+    e <- expr0
+    e <- semicolonToken
+    f <- expr0
+    g <- closeParenthToken
+    h <- stmts
+    i <- endForToken
+    return (DualTree NonTWhile c e)
+  ) <|> try (
+  do
+    a <- forToken
+    b <- openParenthToken
+    c <- exprId
+    d <- semicolonToken
+    e <- expr0
+    e <- semicolonToken
+    f <- expr0
+    g <- closeParenthToken
+    h <- stmts
+    i <- endForToken
     return (DualTree NonTWhile c e)
   )
 

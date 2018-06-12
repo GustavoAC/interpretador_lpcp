@@ -64,7 +64,7 @@ analisadorSemantico (UniTree NonTPrint params) st = printAll st params
 -- for
 -- analisadorSemantico (TriTree NonTFor a b c) (State table io) = error "não implementado"
 -- while
-analisadorSemantico (DualTree NonTWhile a b) (State table io) = error "não implementado"
+analisadorSemantico (DualTree NonTWhile a b) st = resolveWhile st a b
 -- if 
 analisadorSemantico (TriTree NonTIf a b c) st = resolveIfCondition st a b c
 -- procNoArgs
@@ -238,6 +238,15 @@ startBlock stmts (State (SymbolTable a b c scopes mem) io) blocName = finalState
         finalMem = cleanScopeFromMem afterMem nextScope
         finalState = (State (SymbolTable a b c scopes (Memory finalMem)) finalIO)
 
+resolveWhile :: State -> TokenTree -> TokenTree -> State
+resolveWhile st cond stmts = 
+    if (solvedCond) then
+        resolveWhile (startBlock stmts stFinal "while") cond stmts
+    else
+        stFinal
+    where
+        (stFinal, solvedCond) = checkCondition st cond
+
 --               estadoInicial condição       bloco        resto      final
 resolveIfCondition :: State -> TokenTree -> TokenTree -> TokenTree -> State
 resolveIfCondition st cond statements None =
@@ -265,7 +274,7 @@ resolveIfCondition st cond statements (TriTree NonTIf nextCond nextStmts nextBlo
 checkCondition :: State -> TokenTree -> (State, Bool)
 checkCondition st cond = case exprRes of
     (finalState, (BoolType, (Bool res))) -> (finalState, res)
-    _ -> error "A expressão utilizada na condição deve ser do tipo bool"
+    (st, a) -> error ("A expressão utilizada na condição deve ser do tipo bool " ++ (show a))
     where
         exprRes = avaliarExpressao st cond
 
@@ -400,7 +409,7 @@ triTreeExprParser st (LeafToken (SymBoolLessThan _)) a c = res
     where
         (st1, (type1, val1)) = avaliarExpressao st a
         (st2, (type2, val2)) = avaliarExpressao st1 c
-        res = (st2, exprSum (type1, val1) (type2, val2)) -- alterar função
+        res = (st2, exprLessThan (type1, val1) (type2, val2))
 
 -- a > b
 triTreeExprParser st (LeafToken (SymBoolGreaterThan _)) a c = res
@@ -443,6 +452,10 @@ triTreeExprParser st (LeafToken (SymOpMod _)) a c = res
         (st1, (type1, val1)) = avaliarExpressao st a
         (st2, (type2, val2)) = avaliarExpressao st1 c
         res = (st2, exprMod (type1, val1) (type2, val2))
+
+exprLessThan :: (Type, Value) -> (Type, Value) -> (Type, Value)
+exprLessThan (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a < b))
+exprLessThan (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a < b))
 
 exprSum :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprSum (IntType, Int a) (IntType, Int b) = (IntType, Int (a + b))
