@@ -29,20 +29,21 @@ data NonTToken =
   NonTExpr |
   NonTInvokeFunction |
   NonTId |
+  NonTFor|
   NonTInvokeFunctionArgs |
-  NonTCallProcedureArgs |
-  NonTCallProcedure |
-  NonTPtrOp |
-  NonTArray |
-  NonTParams |
-  NonTParam |
-  NonTListIndex |
-  NonTIndex |
-  NonTDecl |
-  NonTPrint |
-  NonTListIds |
-  NonTPtrType |
-  NonTListType |
+  NonTCallProcedureArgs  |
+  NonTCallProcedure      |
+  NonTPtrOp              |
+  NonTArray              |
+  NonTParams             |
+  NonTParam              |
+  NonTListIndex          |
+  NonTIndex              |
+  NonTDecl               |
+  NonTPrint              |
+  NonTListIds            |
+  NonTPtrType            |
+  NonTListType           |
   NonTStructType
   deriving (Eq, Show)
 
@@ -198,6 +199,36 @@ symOpModToken = tokenPrim show update_pos get_token where
   get_token (SymOpMod pos)  = Just (SymOpMod pos)
   get_token _               = Nothing
 
+symOpPlusPlusToken :: ParsecT [Token] st IO (Token)
+symOpPlusPlusToken = tokenPrim show update_pos get_token where
+  get_token (SymOpPlusPlus pos) = Just (SymOpPlusPlus pos)
+  get_token _                   = Nothing
+
+symOpMinusMinusToken :: ParsecT [Token] st IO (Token)
+symOpMinusMinusToken = tokenPrim show update_pos get_token where
+  get_token (SymOpMinusMinus pos) = Just (SymOpMinusMinus pos)
+  get_token _                     = Nothing
+
+symOpPlusAssignToken :: ParsecT [Token] st IO (Token)
+symOpPlusAssignToken = tokenPrim show update_pos get_token where
+  get_token (SymOpPlusAssign pos) = Just (SymOpPlusAssign pos)
+  get_token _                     = Nothing
+
+symOpMinusAssignToken :: ParsecT [Token] st IO (Token)
+symOpMinusAssignToken = tokenPrim show update_pos get_token where
+  get_token (SymOpMinusAssign pos) = Just (SymOpMinusAssign pos)
+  get_token _                      = Nothing
+
+symOpMultAssignToken :: ParsecT [Token] st IO (Token)
+symOpMultAssignToken = tokenPrim show update_pos get_token where
+  get_token (SymOpMultAssign pos) = Just (SymOpMultAssign pos)
+  get_token _                     = Nothing
+
+symOpDivAssignToken :: ParsecT [Token] st IO (Token)
+symOpDivAssignToken = tokenPrim show update_pos get_token where
+  get_token (SymOpDivAssign pos) = Just (SymOpDivAssign pos)
+  get_token _                    = Nothing
+
 --
 -- Brackets e afins
 --
@@ -260,6 +291,16 @@ forToken = tokenPrim show update_pos get_token where
 endForToken :: ParsecT [Token] st IO (Token)
 endForToken = tokenPrim show update_pos get_token where
   get_token (EndFor pos) = Just (EndFor pos)
+  get_token _            = Nothing
+
+foreachToken :: ParsecT [Token] st IO (Token)
+foreachToken = tokenPrim show update_pos get_token where
+  get_token (Foreach pos) = Just (Foreach pos)
+  get_token _         = Nothing
+
+endForeachToken :: ParsecT [Token] st IO (Token)
+endForeachToken = tokenPrim show update_pos get_token where
+  get_token (EndForeach pos) = Just (EndForeach pos)
   get_token _            = Nothing
 
 whileToken :: ParsecT [Token] st IO (Token)
@@ -325,6 +366,11 @@ continueToken = tokenPrim show update_pos get_token where
 --
 -- Statements
 --
+colonToken :: ParsecT [Token] st IO (Token)
+colonToken = tokenPrim show update_pos get_token where
+  get_token (Colon pos) = Just (Colon pos)
+  get_token _               = Nothing
+
 semicolonToken :: ParsecT [Token] st IO (Token)
 semicolonToken = tokenPrim show update_pos get_token where
   get_token (Semicolon pos) = Just (Semicolon pos)
@@ -488,7 +534,7 @@ funcDecl = try (
     p1     <- openParenthToken
     list_p <- varDecls
     p2     <- closeParenthToken
-    two_p  <- -- ":" token todo
+    two_p  <- colonToken
     t      <- types
     s1     <- openScopeToken
     stmts  <- stmts
@@ -501,7 +547,7 @@ funcDecl = try (
     id     <- idToken
     p1     <- openParenthToken
     p2     <- closeParenthToken
-    two_p  <- -- ":" token todo
+    two_p  <- colonToken
     t      <- types
     s1     <- openScopeToken
     stmts  <- stmts
@@ -714,12 +760,12 @@ forLoop = try (
     c <- assign
     d <- semicolonToken
     e <- expr0
-    e <- semicolonToken
-    f <- expr0
-    g <- closeParenthToken
-    h <- stmts
-    i <- endForToken
-    return (DualTree NonTWhile c e)
+    f <- semicolonToken
+    g <- expr0
+    h <- closeParenthToken
+    i <- stmts
+    j <- endForToken
+    return (QuadTree NonTFor c e g i)
   ) <|> try (
   do
     a <- forToken
@@ -727,12 +773,12 @@ forLoop = try (
     c <- decl -- ver essa parte da declaração dentro da função porque seria apenas uma variável e não a lista
     d <- semicolonToken
     e <- expr0
-    e <- semicolonToken
-    f <- expr0
-    g <- closeParenthToken
-    h <- stmts
-    i <- endForToken
-    return (DualTree NonTWhile c e)
+    f <- semicolonToken
+    g <- expr0
+    h <- closeParenthToken
+    i <- stmts
+    j <- endForToken
+    return (QuadTree NonTFor c e g i)
   ) <|> try (
   do
     a <- forToken
@@ -740,12 +786,12 @@ forLoop = try (
     c <- exprId
     d <- semicolonToken
     e <- expr0
-    e <- semicolonToken
-    f <- expr0
-    g <- closeParenthToken
-    h <- stmts
-    i <- endForToken
-    return (DualTree NonTWhile c e)
+    f <- semicolonToken
+    g <- expr0
+    h <- closeParenthToken
+    i <- stmts
+    j <- endForToken
+    return (QuadTree NonTFor c e g i)
   )
 
 -- &&  ||
