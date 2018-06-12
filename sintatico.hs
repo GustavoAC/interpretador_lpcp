@@ -1,5 +1,5 @@
 -- Comente para executar o main local
-module Sintatico (TokenTree(..), NonTToken(..), parser) where
+--module Sintatico (TokenTree(..), NonTToken(..), parser) where
 
 import Lexico
 import Text.Parsec
@@ -17,6 +17,7 @@ data NonTToken =
   NonTProgram |
   NonTStatements |
   NonTStatement |
+  NonTRegDecl |
   NonTFuncDecls |
   NonTFuncDecl |
   NonTProcDecl |
@@ -421,26 +422,26 @@ update_pos pos _ []      = pos
 
 --         Parsec   input       state         output
 program :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-program = try (
+program = {-- try (
   do
     a <- regDecls
     b <- funcDecls
     c <- stmts
     eof
     return (TriTree NonTProgram a b c)
-  ) <|> try (
+  ) <|> --} try (
   do
     b <- funcDecls
     c <- stmts
     eof
     return (DualTree NonTProgram b c)
-  ) <|> try (
+  ) {-- <|> try (
   do
     a <- regDecls
     c <- stmts
     eof
     return (DualTree NonTProgram a c)
-  ) <|> try (
+  ) --} <|> try (
   do
     c <- stmts
     eof
@@ -454,7 +455,7 @@ stmts = try (
     a <- stmt
     b <- stmts
     return (DualTree NonTStatements a b)
-  ) <|> (
+  ) <|> try (
   do
     a <- stmt
     return (UniTree NonTStatement a)
@@ -519,10 +520,22 @@ funcDecls = try (
     f_decl  <- funcDecl
     return (UniTree NonTFuncDecls f_decl)
   ) <|> try (
-  -- <procDec>
+  -- <procDec
   do
     p_decl  <- procDec
     return (UniTree NonTFuncDecls p_decl)
+  )
+
+regDecls :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+regDecls = try (
+  -- registro <id> { <stmts> }
+  do
+    -- token <- registroToken TO DO
+    id    <- idToken
+    s1    <- openScopeToken
+    stmt  <- stmts
+    s2    <- closeBracketToken
+    return (DualTree NonTRegDecl (makeToken id) stmt)
   )
 
 funcDecl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -1154,8 +1167,8 @@ parser :: [Token] -> IO (Either ParseError TokenTree)
 parser tokens = runParserT program [] "Error message" tokens
 
 -- Descomente para usar o main local
--- main :: IO ()
--- main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
---             { Left err -> print err; 
---               Right ans -> print ans
---             }
+main :: IO ()
+main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
+            { Left err -> print err; 
+              Right ans -> print ans
+            }
