@@ -14,31 +14,32 @@ data TokenTree = QuadTree NonTToken TokenTree TokenTree TokenTree TokenTree |
                  None |
                  LeafToken Token deriving (Eq, Show)
 data NonTToken = 
-  NonTProgram |
-  NonTStatements |
-  NonTStatement |
-  NonTAssign |
-  NonTIf |
-  NonTElse |
-  NonTElif |
-  NonTWhile |
-  NonTExpr |
-  NonTInvokeFunction |
-  NonTId |
+  NonTProgram            |
+  NonTStatements         |
+  NonTStatement          |
+  NonTAssign             |
+  NonTIf                 |
+  NonTElse               |
+  NonTElif               |
+  NonTWhile              |
+  NonTFor                |
+  NonTExpr               |
+  NonTInvokeFunction     |
+  NonTId                 |
   NonTInvokeFunctionArgs |
-  NonTCallProcedureArgs |
-  NonTCallProcedure |
-  NonTPtrOp |
-  NonTArray |
-  NonTParams |
-  NonTParam |
-  NonTListIndex |
-  NonTIndex |
-  NonTDecl |
-  NonTPrint |
-  NonTListIds |
-  NonTPtrType |
-  NonTListType |
+  NonTCallProcedureArgs  |
+  NonTCallProcedure      |
+  NonTPtrOp              |
+  NonTArray              |
+  NonTParams             |
+  NonTParam              |
+  NonTListIndex          |
+  NonTIndex              |
+  NonTDecl               |
+  NonTPrint              |
+  NonTListIds            |
+  NonTPtrType            |
+  NonTListType           |
   NonTStructType
   deriving (Eq, Show)
 
@@ -623,7 +624,6 @@ whileLoop = try (
   )
 
 -- Não testado o for
-
 forLoop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 forLoop = try (
   do
@@ -632,12 +632,12 @@ forLoop = try (
     c <- assign
     d <- semicolonToken
     e <- expr0
-    e <- semicolonToken
-    f <- expr0
-    g <- closeParenthToken
-    h <- stmts
-    i <- endForToken
-    return (DualTree NonTWhile c e)
+    f <- semicolonToken
+    g <- expr0
+    h <- closeParenthToken
+    i <- stmts
+    j <- endForToken
+    return (QuadTree NonTFor c e g i)
   ) <|> try (
   do
     a <- forToken
@@ -645,12 +645,12 @@ forLoop = try (
     c <- decl -- ver essa parte da declaração dentro da função porque seria apenas uma variável e não a lista
     d <- semicolonToken
     e <- expr0
-    e <- semicolonToken
-    f <- expr0
-    g <- closeParenthToken
-    h <- stmts
-    i <- endForToken
-    return (DualTree NonTWhile c e)
+    f <- semicolonToken
+    g <- expr0
+    h <- closeParenthToken
+    i <- stmts
+    j <- endForToken
+    return (QuadTree NonTFor c e g i)
   ) <|> try (
   do
     a <- forToken
@@ -658,12 +658,12 @@ forLoop = try (
     c <- exprId
     d <- semicolonToken
     e <- expr0
-    e <- semicolonToken
-    f <- expr0
-    g <- closeParenthToken
-    h <- stmts
-    i <- endForToken
-    return (DualTree NonTWhile c e)
+    f <- semicolonToken
+    g <- expr0
+    h <- closeParenthToken
+    i <- stmts
+    j <- endForToken
+    return (QuadTree NonTFor c e g i)
   )
 
 -- &&  ||
