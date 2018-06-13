@@ -1,6 +1,8 @@
 function teste (int a, b, c; float d, e, f) : int { 
-	int teste = 3;
+	ptr int exemplo, t => new int, p => a;
 	float teste2 = 2.3;
+
+	delete exemplo;
 }
 
 function func_vazia () : int { 

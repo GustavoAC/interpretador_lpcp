@@ -17,12 +17,14 @@ data NonTToken =
   NonTProgram |
   NonTStatements |
   NonTStatement |
+  NonTDelPtr |
   NonTRegDecl |
   NonTFuncDecls |
   NonTFuncDecl |
   NonTProcDecl |
   NonTVarDecls |
   NonTAssign |
+  NonTPointTo |
   NonTIf |
   NonTElse |
   NonTElif |
@@ -491,6 +493,19 @@ stmt = try (
     things <- listParam
     colon <- semicolonToken
     return (UniTree NonTPrint things)
+  ) <|> try (
+  -- ptr apontar : ponteiro => new int;
+  do
+    first <- point_to
+    colon <- semicolonToken
+    return first
+  ) <|> try (
+  -- delete ponteiro 
+  do 
+    token <- deleteToken
+    id    <- exprId
+    colon <- semicolonToken
+    return (UniTree NonTDelPtr (UniTree NonTId id) )
   )
 
 decl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -613,6 +628,18 @@ varDecls = try (
 
 listIds :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 listIds = try (
+  -- a => algo, ...
+  do 
+    id <- point_to
+    v <- commaToken
+    list <- listIds
+    return (DualTree NonTListIds id list)
+  ) <|> try (
+  -- a => algo
+  do 
+    a <- point_to
+    return a
+  ) <|> try (
   -- a = algo, ...
   do 
     id <- assign
@@ -678,6 +705,24 @@ assign = do
           b <- attribToken
           c <- expr0
           return (DualTree NonTAssign (UniTree NonTId a) c)
+
+point_to :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+point_to = try (
+  -- id => new tipo
+  do
+    a <- exprId
+    b <- symPtrOpToken
+    c <- newToken
+    d <- types
+    return (DualTree NonTPointTo (UniTree NonTId a) d)
+  ) <|> try (
+  -- id => id
+  do
+    a <- exprId
+    b <- symPtrOpToken
+    c <- exprId
+    return (DualTree NonTPointTo (UniTree NonTId a) (UniTree NonTId c))
+  ) 
 
 loop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 loop = try (
@@ -804,7 +849,7 @@ forLoop = try (
     h <- closeParenthToken
     i <- stmts
     j <- endForToken
-    return (QuadTree NonTFor c e g i)
+    return (QuadTree NonTFor (UniTree NonTId c) e g i)
   )
 
 -- &&  ||
