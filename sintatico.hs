@@ -457,29 +457,31 @@ program = {-- try (
 stmts :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 stmts = try (
   do
-    a <- stmt
+    a <- singleStmt
     b <- stmts
     return (DualTree NonTStatements a b)
   ) <|> try (
   do
-    a <- stmt
+    a <- singleStmt
     return (UniTree NonTStatement a)
   )
 
-stmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-stmt = try (
-  -- Declarações
+singleStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+singleStmt = try (
+  -- Controle
   do
-   first <- decl
-   colon <- semicolonToken
+   first <- controlStmts
    return first
   ) <|> try (
-  -- Atribuição
+  -- Basico
   do
-   first <- assign
+   first <- basicStmts
    colon <- semicolonToken
    return first
-  ) <|> try (
+  )
+
+controlStmts :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+controlStmts = try (
   -- Loops
   do
     first <- loop
@@ -489,12 +491,24 @@ stmt = try (
   do
     first <- condition
     return first
+  )
+  
+basicStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+basicStmt = try (
+  -- Declarações
+  do
+   first <- decl
+   return first
+  ) <|> try (
+  -- Atribuição
+  do
+   first <- assign
+   return first
   ) <|> try (
   -- print
   do 
     first <- printToken
     things <- listParam
-    colon <- semicolonToken
     return (UniTree NonTPrint things)
   )
 
@@ -775,37 +789,11 @@ forLoop = try (
   do
     a <- forToken
     b <- openParenthToken
-    c <- assign
+    c <- basicStmts
     d <- semicolonToken
     e <- expr0
     f <- semicolonToken
-    g <- expr0
-    h <- closeParenthToken
-    i <- stmts
-    j <- endForToken
-    return (QuadTree NonTFor c e g i)
-  ) <|> try (
-  do
-    a <- forToken
-    b <- openParenthToken
-    c <- decl -- ver essa parte da declaração dentro da função porque seria apenas uma variável e não a lista
-    d <- semicolonToken
-    e <- expr0
-    f <- semicolonToken
-    g <- expr0
-    h <- closeParenthToken
-    i <- stmts
-    j <- endForToken
-    return (QuadTree NonTFor c e g i)
-  ) <|> try (
-  do
-    a <- forToken
-    b <- openParenthToken
-    c <- exprId
-    d <- semicolonToken
-    e <- expr0
-    f <- semicolonToken
-    g <- expr0
+    g <- basicStmts
     h <- closeParenthToken
     i <- stmts
     j <- endForToken
