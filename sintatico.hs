@@ -412,6 +412,11 @@ deleteToken = tokenPrim show update_pos get_token where
   get_token (Delete pos)  = Just (Delete pos)
   get_token _            = Nothing
 
+structToken :: ParsecT [Token] st IO (Token)
+structToken = tokenPrim show update_pos get_token where
+  get_token (Struct pos)  = Just (Struct pos)
+  get_token _            = Nothing
+
 
 -- O que ele quis dizer com isso?
 update_pos :: SourcePos -> Token -> [Token] -> SourcePos
