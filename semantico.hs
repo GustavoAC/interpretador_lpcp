@@ -457,9 +457,14 @@ exprLessThan :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprLessThan (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a < b))
 exprLessThan (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a < b))
 
+intToFloat :: Int -> Float
+intToFloat a = fromInteger (toInteger a) 
+
 exprSum :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprSum (IntType, Int a) (IntType, Int b) = (IntType, Int (a + b))
 exprSum (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a + b))
+exprSum (IntType, Int a) (FloatType, Float b) = (FloatType, Float ( intToFloat a + b ))
+exprSum (FloatType, Float a) (IntType, Int b) = (FloatType, Float ( a + intToFloat b ))
 exprSum (StringType, String a) (StringType, String b) = (StringType, String (a ++ b))
 exprSum (ListType t1, List a) (ListType t2, List b) = 
     if t1 == t2 
@@ -470,16 +475,22 @@ exprSum a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show 
 exprMinus :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprMinus (IntType, Int a) (IntType, Int b) = (IntType, Int (a - b))
 exprMinus (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a - b))
+exprMinus (IntType, Int a) (FloatType, Float b) = (FloatType, Float ( intToFloat a - b ))
+exprMinus (FloatType, Float a) (IntType, Int b) = (FloatType, Float ( a - intToFloat b ))
 exprMinus a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 exprMult :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprMult (IntType, Int a) (IntType, Int b) = (IntType, Int (a * b))
 exprMult (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a * b))
+exprMult (IntType, Int a) (FloatType, Float b) = (FloatType, Float ( intToFloat a * b ))
+exprMult (FloatType, Float a) (IntType, Int b) = (FloatType, Float ( a * intToFloat b ))
 exprMult a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 exprDiv :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprDiv (IntType, Int a) (IntType, Int b) = (IntType, Int (a `div` b))
 exprDiv (FloatType, Float a) (FloatType, Float b) = (FloatType, Float (a / b))
+exprDiv (IntType, Int a) (FloatType, Float b) = (FloatType, Float ( intToFloat a / b ))
+exprDiv (FloatType, Float a) (IntType, Int b) = (FloatType, Float ( a / intToFloat b ))
 exprDiv a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
 exprMod :: (Type, Value) -> (Type, Value) -> (Type, Value)
@@ -493,9 +504,6 @@ exprExp (IntType, Int a) (FloatType, Float b) = (FloatType, Float ( intToFloat a
 exprExp (FloatType, Float a) (IntType, Int b) = (FloatType, Float ( a ** intToFloat b ))
 exprExp a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
-intToFloat :: Int -> Float
-intToFloat a = fromInteger (toInteger a) 
-
 exprBoolEq :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprBoolEq (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a == b))
 exprBoolEq (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a == b))
@@ -503,7 +511,8 @@ exprBoolEq (IntType, Int a) (FloatType, Float b) = (BoolType, Bool ( intToFloat 
 exprBoolEq (FloatType, Float a) (IntType, Int b) = (BoolType, Bool ( a == intToFloat b ))
 exprBoolEq (StringType, String a) (StringType, String b) = (BoolType, Bool (a == b))
 exprBoolEq (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a == b))
--- carece igualdade de ponteiros
+exprBoolEq (PointerType tipoA, Pointer strA scpA) (PointerType tipoB, Pointer strB scpB) = 
+    (BoolType, Bool (tipoA == tipoB && strA == strB && scpA == scpB))
 exprBoolEq (ListType t1, List a) (ListType t2, List b) = (BoolType, Bool (a == b))
 exprBoolEq a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
@@ -514,7 +523,8 @@ exprBoolNotEq (IntType, Int a) (FloatType, Float b) = (BoolType, Bool ( intToFlo
 exprBoolNotEq (FloatType, Float a) (IntType, Int b) = (BoolType, Bool ( a /= intToFloat b ))
 exprBoolNotEq (StringType, String a) (StringType, String b) = (BoolType, Bool (a /= b))
 exprBoolNotEq (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a /= b))
--- carece não igualdade de ponteiros
+exprBoolNotEq (PointerType tipoA, Pointer strA scpA) (PointerType tipoB, Pointer strB scpB) = 
+    (BoolType, Bool (tipoA /= tipoB || strA /= strB || scpA /= scpB))
 exprBoolNotEq (ListType t1, List a) (ListType t2, List b) = (BoolType, Bool (a /= b))
 exprBoolNotEq a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
 
