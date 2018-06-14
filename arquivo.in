@@ -1,22 +1,7 @@
-function teste (int a, b, c; float d, e, f) : int { 
-	ptr int exemplo, t => new int, p => a;
-	float teste2 = 2.3;
-
-	delete exemplo;
-}
-
-function func_vazia () : int { 
-	print(a); 
-}
-
-procedure p (int a; string b; bool c = true) { 
-	print(func_vazia());
-}
-
-procedure p_vazia () { 
-	print(func_vazia());
-}
+blalba = e;
 
 if (a < 5) then
 	print(a);
 endif
+
+a => teste;

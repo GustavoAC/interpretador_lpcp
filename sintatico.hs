@@ -1,5 +1,5 @@
 -- Comente para executar o main local
-module Sintatico (TokenTree(..), NonTToken(..), parser) where
+-- module Sintatico (TokenTree(..), NonTToken(..), parser) where
 
 import Lexico
 import Text.Parsec
@@ -18,7 +18,8 @@ data NonTToken =
   NonTStatements |
   NonTStatement |
   NonTDelPtr |
-  NonTRegDecl |
+  NonTStructDecl |
+  NonTStructDecls |
   NonTFuncDecls |
   NonTFuncDecl |
   NonTProcDecl |
@@ -431,7 +432,7 @@ update_pos pos _ []      = pos
 program :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 program = {-- try (
   do
-    a <- regDecls
+    a <- structDecls
     b <- funcDecls
     c <- stmts
     eof
@@ -442,13 +443,13 @@ program = {-- try (
     c <- stmts
     eof
     return (DualTree NonTProgram b c)
-  ) {-- <|> try (
+  ) <|> try (
   do
-    a <- regDecls
+    a <- structDecls
     c <- stmts
     eof
     return (DualTree NonTProgram a c)
-  ) --} <|> try (
+  ) <|> try (
   do
     c <- stmts
     eof
@@ -477,7 +478,7 @@ singleStmt = try (
   ) <|> try (
   -- Basico
   do
-   first <- basicStmts
+   first <- basicStmt
    colon <- semicolonToken
    return first
   )
@@ -496,7 +497,20 @@ controlStmts = try (
   )
   
 basicStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-basicStmt = try (
+basicStmt =  try (
+  -- ptr apontar : ponteiro => new int;
+  do
+    first <- point_to
+    colon <- semicolonToken
+    return first
+  ) <|> try (
+  -- delete ponteiro 
+  do 
+    token <- deleteToken
+    id    <- exprId
+    colon <- semicolonToken
+    return (UniTree NonTDelPtr (UniTree NonTId id) )
+  ) <|> try (
   -- Declarações
   do
    first <- decl
@@ -512,19 +526,6 @@ basicStmt = try (
     first <- printToken
     things <- listParam
     return (UniTree NonTPrint things)
-  ) <|> try (
-  -- ptr apontar : ponteiro => new int;
-  do
-    first <- point_to
-    colon <- semicolonToken
-    return first
-  ) <|> try (
-  -- delete ponteiro 
-  do 
-    token <- deleteToken
-    id    <- exprId
-    colon <- semicolonToken
-    return (UniTree NonTDelPtr (UniTree NonTId id) )
   )
 
 decl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -560,16 +561,30 @@ funcDecls = try (
     return (UniTree NonTFuncDecls p_decl)
   )
 
-regDecls :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-regDecls = try (
-  -- registro <id> { <stmts> }
+structDecls :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+structDecls = try (
+  -- <structDecls> <structDecls>
   do
-    -- token <- registroToken TO DO
+    s_decl  <- structDecl
+    s_decls <- structDecls
+    return (DualTree NonTStructDecls s_decl s_decls)
+  ) <|> try (
+  -- <structDecls>
+  do
+    s_decl  <- funcDecl
+    return (UniTree NonTStructDecls s_decl)
+  )
+
+structDecl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+structDecl = try (
+  -- struct <id> { <stmts> }
+  do
+    token <- structToken
     id    <- idToken
     s1    <- openScopeToken
     stmt  <- stmts
     s2    <- closeBracketToken
-    return (DualTree NonTRegDecl (makeToken id) stmt)
+    return (DualTree NonTStructDecl (makeToken id) stmt)
   )
 
 funcDecl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -834,11 +849,11 @@ forLoop = try (
   do
     a <- forToken
     b <- openParenthToken
-    c <- basicStmts
+    c <- basicStmt
     d <- semicolonToken
     e <- expr0
     f <- semicolonToken
-    g <- basicStmts
+    g <- basicStmt
     h <- closeParenthToken
     i <- stmts
     j <- endForToken
@@ -1204,10 +1219,12 @@ listIndexes = try (
 parser :: [Token] -> IO (Either ParseError TokenTree)
 parser tokens = runParserT program [] "Error message" tokens
 
--- Descomente para usar o main local
--- main :: IO ()
--- main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
---             { Left err -> print err; 
---               Right ans -> print ans
---             }
+{--
+  Descomente para usar o main local
+--}
+main :: IO ()
+main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
+             { Left err -> print err; 
+               Right ans -> print ans
+             }
 
