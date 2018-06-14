@@ -37,6 +37,7 @@ data NonTToken =
   NonTInvokeFunctionArgs |
   NonTCallProcedureArgs  |
   NonTCallProcedure      |
+  NonTReturn             |
   NonTPtrOp              |
   NonTArray              |
   NonTParams             |
@@ -435,7 +436,6 @@ program = {-- try (
     a <- structDecls
     b <- funcDecls
     c <- stmts
-    eof
     return (TriTree NonTProgram a b c)
   ) <|> --} try (
   do
@@ -447,7 +447,6 @@ program = {-- try (
   do
     a <- structDecls
     c <- stmts
-    eof
     return (DualTree NonTProgram a c)
   ) <|> try (
   do
@@ -471,11 +470,16 @@ stmts = try (
 
 singleStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 singleStmt = try (
-  -- Controle
+  -- Fluxo
   do
-   first <- controlStmts
+   first <- jumpStmt
    return first
   ) <|> try (
+    -- Controle
+    do
+     first <- controlStmt
+     return first
+    ) <|> try (
   -- Basico
   do
    first <- basicStmt
@@ -483,8 +487,20 @@ singleStmt = try (
    return first
   )
 
-controlStmts :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-controlStmts = try (
+jumpStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+jumpStmt = try (
+  do
+    ret <- returnToken
+    val <- expr0;
+    return (UniTree NonTReturn val);
+  ) <|> try (
+  do
+    ret <- returnToken
+    return (UniTree NonTReturn None);
+  )
+
+controlStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+controlStmt = try (
   -- Loops
   do
     first <- loop
@@ -495,21 +511,14 @@ controlStmts = try (
     first <- condition
     return first
   )
-  
+ 
 basicStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-basicStmt =  try (
-  -- ptr apontar : ponteiro => new int;
-  do
-    first <- point_to
-    colon <- semicolonToken
-    return first
-  ) <|> try (
-  -- delete ponteiro 
+basicStmt = try (
+  -- print
   do 
-    token <- deleteToken
-    id    <- exprId
-    colon <- semicolonToken
-    return (UniTree NonTDelPtr (UniTree NonTId id) )
+    first <- printToken
+    things <- listParam
+    return (UniTree NonTPrint things)
   ) <|> try (
   -- Declarações
   do
@@ -521,11 +530,16 @@ basicStmt =  try (
    first <- assign
    return first
   ) <|> try (
-  -- print
+  -- ptr apontar : ponteiro => new int;
+  do
+    first <- point_to
+    return first
+  ) <|> try (
+  -- delete ponteiro 
   do 
-    first <- printToken
-    things <- listParam
-    return (UniTree NonTPrint things)
+    token <- deleteToken
+    id    <- exprId
+    return (UniTree NonTDelPtr (UniTree NonTId id) )
   )
 
 decl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -754,8 +768,8 @@ point_to = try (
   do
     a <- exprId
     b <- symPtrOpToken
-    c <- exprId
-    return (DualTree NonTPointTo (UniTree NonTId a) (UniTree NonTId c))
+    c <- idToken
+    return (DualTree NonTPointTo (UniTree NonTId a) (makeToken c))
   ) 
 
 loop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)

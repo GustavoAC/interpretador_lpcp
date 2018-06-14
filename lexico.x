@@ -22,9 +22,9 @@ tokens :-
   list                                        { \p s -> TypeList p }
   $digit+\.$digit+                            { \p s -> FloatLit p (read s) }
   $digit+                                     { \p s -> IntLit p (read s) }
-  ":"                                         { \p s -> Colon p }
-  ";"                                         { \p s -> Semicolon p }
-  ","                                         { \p s -> Comma p }
+  \:                                          { \p s -> Colon p }
+  \;                                          { \p s -> Semicolon p }
+  \,                                          { \p s -> Comma p }
   \=\=                                        { \p s -> SymBoolEq p }
   \!\=                                        { \p s -> SymBoolNotEq p }
   \<\=                                        { \p s -> SymBoolLessThanEq p }
