@@ -381,7 +381,7 @@ avaliarExpressao st tree = case tree of
             (LeafToken (SymBoolNot _)) -> res
             where
                 (st1, (type1, val1)) = avaliarExpressao st a
-                res = (st1, exprSum (type1, val1) (type1, val1)) -- mudar função
+                res = (st1, exprBoolNot (type1, val1))
         
         NonTInvokeFunctionArgs -> error "não implementado ainda" -- res
             -- where
@@ -616,6 +616,10 @@ exprBoolGreaterThan :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprBoolGreaterThan (IntType, Int a) (IntType, Int b) = (BoolType, Bool (a > b))
 exprBoolGreaterThan (FloatType, Float a) (FloatType, Float b) = (BoolType, Bool (a > b))
 exprBoolGreaterThan a b = error ("Operação entre os tipos " ++ (show a) ++ " e " ++ (show b) ++ " não é permitida")
+
+exprBoolNot :: (Type, Value) -> (Type, Value)
+exprBoolNot (BoolType, Bool a) = (BoolType, Bool (not a))
+exprBoolNot a = error ("Operação com o tipo " ++ (show a) ++ " não é permitida")
 
 exprBoolAnd :: (Type, Value) -> (Type, Value) -> (Type, Value)
 exprBoolAnd (BoolType, Bool a) (BoolType, Bool b) = (BoolType, Bool (a && b))
