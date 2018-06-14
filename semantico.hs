@@ -9,7 +9,16 @@ data State = State SymbolTable (IO ())
 --                             structs  procedimentos funções escAtuais memoria
 data SymbolTable = SymbolTable [Struct] [Procedure] [Function] [Scope] Memory deriving (Eq, Show)
 --                          nome   campos   bloco
-data Procedure = Procedure String [Field] TokenTree deriving (Eq, Show)
+data Procedure = Procedure String [Field] TokenTree |
+--                             nome  campos      procedimento em haskell
+                 SysProcedure String [Field] (State -> [(Type, Value)] -> State)
+instance Eq Procedure where
+    (SysProcedure a1 b1 c1) == (SysProcedure a2 b2 c2) = ((a1 == a2) && (b1 == b2))
+    (Procedure a1 b1 c1) == (Procedure a2 b2 c2) = ((a1 == a2) && (b1 == b2) && (c1 == c2))
+instance Show Procedure where
+    show (SysProcedure a b c) = show a ++ " " ++ show b  ++ " sys function"
+    show (Procedure a b c) = show a ++ " " ++ show b  ++ " " ++ show c
+
 --                        nome retorno campos bloco
 data Function = Function String Type [Field] TokenTree deriving (Eq, Show)
 --                    nome  campos
@@ -60,7 +69,9 @@ analisadorSemantico (DualTree NonTAssign a c) st = assignToId st a c
 -- print
 analisadorSemantico (UniTree NonTPrint params) st = printAll st params
 -- point to
--- analisadorSemantico (LeafToken Continue) (State table io) = error "não implementado"
+analisadorSemantico (DualTree NonTPointTo a b) st = pointToId st a b
+-- delete
+analisadorSemantico (UniTree NonTDelPtr id) st = deletePointer st id
 -- for
 -- analisadorSemantico (TriTree NonTFor a b c) (State table io) = error "não implementado"
 -- while
@@ -164,16 +175,57 @@ assignToId st id expr = finalState
         finalMem = atribuirVar mem finalVal
         finalState = (State (SymbolTable a b c d (Memory finalMem)) io)
 
+pointToId :: State -> TokenTree -> TokenTree -> State
+pointToId st ptr (LeafToken (Id _ id)) = finalState
+    where
+        (State (SymbolTable structs procs funcs scope (Memory mem)) io) = st
+        (Variable _ varTyp _ varSco) = lookUpScoped mem id scope
+        (st2, finalVal) = criarValorParaAtribuicao st ptr ((PointerType varTyp), (Pointer id varSco))
+        (State (SymbolTable a b c d (Memory nextMem)) io2) = st2
+        finalMem = atribuirVar nextMem finalVal
+        finalState = (State (SymbolTable a b c d (Memory finalMem)) io2)
+pointToId st ptr typ = finalState
+    where
+        (State (SymbolTable structs procs funcs scope (Memory mem)) io) = st
+        finalType = parseType typ
+        newId = show (findNextHeapId mem)
+        mem2 = instantiateNewHeapVar mem finalType newId
+        st1 = (State (SymbolTable structs procs funcs scope (Memory mem2)) io)
+        (st2, finalVal) = criarValorParaAtribuicao st1 ptr ((PointerType finalType), (Pointer newId (Scope ("heap", -1) ("heap", -1))))
+        (State (SymbolTable a b c d (Memory mem3)) io2) = st2
+        finalMem = atribuirVar mem3 finalVal
+        finalState = (State (SymbolTable a b c d (Memory finalMem)) io2)
+--                                               id
+instantiateNewHeapVar :: [Variable] -> Type -> String -> [Variable]
+instantiateNewHeapVar mem typ id = (Variable id typ (defaultVal typ) (Scope ("heap", -1) ("heap", -1))):mem
+
+findNextHeapId :: [Variable] -> Int
+findNextHeapId [] = 1
+findNextHeapId ((Variable id typ val (Scope (name, depth) _)):mem) =
+    if (name == "heap" && depth == -1) then
+        if res > ((read id) + 1) then
+            res
+        else
+            (read id) + 1
+    else res
+    where
+        res = findNextHeapId mem
+        
 -- TODO: TESTAR FAMÍLIA DE FUNÇÕES STARTPROCEDURE
 --       Trocar params de [String] pra [(Type, Value)] e avaliar por aqui
 --       Se cada valor passado é um id ou uma expressão.
---                       procname    params
+--                       procname        params
 startProcedure :: State -> String -> [(Type, Value)] -> State
 startProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) procName params =
-    finalState
+    runProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) proc params
     where
         -- acha o proc
-        (Procedure _ fields procTree) = findProc procs procName (fieldfy params)
+        proc = findProc procs procName (fieldfy params)
+
+runProcedure :: State -> Procedure -> [(Type, Value)] -> State
+runProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) (Procedure procName fields procTree) params =
+    finalState
+    where
         -- gera proximoescopo
         newStartingScopeDepth = findNextScopeDepthFromMem mem procName
         newStartingScope = Scope (procName, newStartingScopeDepth) (procName, 1)
@@ -183,8 +235,11 @@ startProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io
         (State (SymbolTable _ _ _ _ (Memory procFinalMem)) finalIo) = analisadorSemantico procTree (State (SymbolTable structs procs funcs [newStartingScope] (Memory newMem)) io)
         -- deletar coisas do escopo aqui
         finalMem = cleanScopeFromMem procFinalMem newStartingScope
-        -- temp só pra compilar
+        -- estadoFinal
         finalState = (State (SymbolTable structs procs funcs oldScope (Memory finalMem)) finalIo)
+runProcedure st (SysProcedure procName fields func) params =
+    func st params
+
 
 --                        funcName    params
 startFunction :: State -> TokenTree -> [(Type, Value)] -> (State, (Type, Value))
@@ -593,6 +648,10 @@ findProc ((Procedure procName procFields tree):procs) tarName tarFields =
     if procName == tarName && procFields == tarFields
         then (Procedure procName procFields tree)
     else findProc procs tarName tarFields
+findProc ((SysProcedure procName procFields func):procs) tarName tarFields =
+    if procName == tarName && procFields == tarFields
+        then (SysProcedure procName procFields func)
+    else findProc procs tarName tarFields
 
 --            funcoes      nome      tipos
 findFunc :: [Function] -> String -> [Field] -> Function
@@ -777,6 +836,29 @@ printOne val = case val of
 printList :: [Value] -> IO()
 printList [] = putStr ""
 printList (a:vals) = (printOne a) >> (printList vals)
+
+deletePointer :: State -> TokenTree -> State
+deletePointer st id =
+    if (checkForPtrType exprVal) then
+        deletePointerFromHeap midState exprVal
+    else
+        error "Impossível usar 'delete' em algo que não é ponteiro"
+    where
+        (midState, (exprTyp, exprVal)) = avaliarExpressao st id;
+
+deletePointerFromHeap :: State -> Value -> State
+deletePointerFromHeap (State (SymbolTable a b c d (Memory mem)) io) (Pointer id esc) =
+    if (scopeName == "heap" && depth == -1)
+        then (State (SymbolTable a b c d (Memory (deletePointerFromHeapMem mem id esc))) io)
+    else error "Impossível deletar variáveis não alocadas dinamicamente"
+    where
+        (Scope (scopeName, depth) _) = esc
+
+deletePointerFromHeapMem :: [Variable] -> String -> Scope -> [Variable]
+deletePointerFromHeapMem ((Variable id ty val sc):mem) searchId searchSco =
+    if (searchId == id && searchSco == sc) then mem
+    else (Variable id ty val sc):(deletePointerFromHeapMem mem searchId searchSco)
+
 
 -- TODO: NÃO TESTADA
 -- Deprecated

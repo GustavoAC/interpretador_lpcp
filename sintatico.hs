@@ -753,8 +753,8 @@ point_to = try (
   do
     a <- exprId
     b <- symPtrOpToken
-    c <- exprId
-    return (DualTree NonTPointTo (UniTree NonTId a) (UniTree NonTId c))
+    c <- idToken
+    return (DualTree NonTPointTo (UniTree NonTId a) (makeToken c))
   ) 
 
 loop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
