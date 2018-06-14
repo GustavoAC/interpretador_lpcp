@@ -186,9 +186,9 @@ startProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io
         -- temp só pra compilar
         finalState = (State (SymbolTable structs procs funcs oldScope (Memory finalMem)) finalIo)
 
---                       funcName    params
-startFunction :: State -> String -> [(Type, Value)] -> (State, (Type, Value))
-startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) funcName params =
+--                        funcName    params
+startFunction :: State -> TokenTree -> [(Type, Value)] -> (State, (Type, Value))
+startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) (LeafToken (Id _ funcName)) params =
     res
     where
         -- acha a func
@@ -201,11 +201,25 @@ startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io)
         -- executa a func no analisadorSemantico
         (State (SymbolTable _ _ _ _ (Memory funcFinalMem)) finalIo) = analisadorSemantico funcTree (State (SymbolTable structs procs funcs [newStartingScope] (Memory newMem)) io)
         -- Tentar pegar o retorno aqui
-        returnedVal = (IntType, Int 4) -- lookUpWrapper "return" (Scope funcName 0)
+        returnedVal = getReturn funcFinalMem newStartingScope retType;
+        -- deletar return aqui
+        afterReturnDelMem = cleanScopeFromMem funcFinalMem (Scope (funcName, newStartingScopeDepth) ("return", 0))
         -- deletar coisas do escopo aqui
-        finalMem = cleanScopeFromMem funcFinalMem newStartingScope
-        -- temp só pra compilar
+        finalMem = cleanScopeFromMem afterReturnDelMem newStartingScope
+        -- valor de retorno
         res = ((State (SymbolTable structs procs funcs oldScope (Memory finalMem)) finalIo), returnedVal)
+
+getReturn :: [Variable] -> Scope -> Type -> (Type, Value)
+getReturn mem (Scope funcScope (_, _)) typ = 
+    case res of
+        Nothing -> error "Nenhum valor foi retornado na função"
+        Just (Variable _ varTyp varVal _) ->
+            if (varTyp == typ) then
+                (typ, varVal)
+            else 
+                error "Tipo de retorno incorreto"
+    where
+        res = lookUpAux mem "return" (Scope funcScope ("return", 0))
 
 -- Find next scope depth
 findNextScopeDepthFromMem :: [Variable] -> String -> Int
@@ -297,14 +311,14 @@ findNextScopeDepthFromScope ((Scope (scName, scDepth) (_,_)):scopes) name =
 avaliarExpressao :: State -> TokenTree -> (State, (Type, Value))
 avaliarExpressao st tree = case tree of
     -- literais
-    LeafToken a -> case a of -- TODO: Adicionar true e false
+    LeafToken a -> case a of
         IntLit _ v -> (st, (IntType, Int v))
         FloatLit _ v -> (st, (FloatType, Float v))
         StrLit _ v -> (st, (StringType, String v))
         SymBoolTrue _ -> (st, (BoolType, Bool True))
         SymBoolFalse _ -> (st, (BoolType, Bool False))
     UniTree nonT a -> case nonT of
-        NonTInvokeFunction -> error "não implementado ainda" -- startProcedure st a [] -- modificar para startFunction
+        NonTInvokeFunction -> startFunction st a []
         NonTId -> avaliarExpressaoParseId st a
     DualTree nonT a b -> case nonT of
         NonTExpr -> case a of 

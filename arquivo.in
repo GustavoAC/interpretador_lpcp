@@ -17,6 +17,4 @@ procedure p_vazia () {
 	print(func_vazia());
 }
 
-if (a < 5) then
-	print(a);
-endif
+print a, b;

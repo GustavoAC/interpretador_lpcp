@@ -36,6 +36,7 @@ data NonTToken =
   NonTInvokeFunctionArgs |
   NonTCallProcedureArgs  |
   NonTCallProcedure      |
+  NonTReturn             |
   NonTPtrOp              |
   NonTArray              |
   NonTParams             |
@@ -434,7 +435,6 @@ program = {-- try (
     a <- regDecls
     b <- funcDecls
     c <- stmts
-    eof
     return (TriTree NonTProgram a b c)
   ) <|> --} try (
   do
@@ -446,7 +446,6 @@ program = {-- try (
   do
     a <- regDecls
     c <- stmts
-    eof
     return (DualTree NonTProgram a c)
   ) --} <|> try (
   do
@@ -470,20 +469,37 @@ stmts = try (
 
 singleStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 singleStmt = try (
-  -- Controle
+  -- Fluxo
   do
-   first <- controlStmts
+   first <- jumpStmt
    return first
   ) <|> try (
+    -- Controle
+    do
+     first <- controlStmt
+     return first
+    ) <|> try (
   -- Basico
   do
-   first <- basicStmts
+   first <- basicStmt
    colon <- semicolonToken
    return first
   )
 
-controlStmts :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-controlStmts = try (
+jumpStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+jumpStmt = try (
+  do
+    ret <- returnToken
+    val <- expr0;
+    return (UniTree NonTReturn val);
+  ) <|> try (
+  do
+    ret <- returnToken
+    return (UniTree NonTReturn None);
+  )
+
+controlStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+controlStmt = try (
   -- Loops
   do
     first <- loop
@@ -497,6 +513,12 @@ controlStmts = try (
   
 basicStmt :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 basicStmt = try (
+  -- print
+  do 
+    first <- printToken
+    things <- listParam
+    return (UniTree NonTPrint things)
+  ) <|> try (
   -- Declarações
   do
    first <- decl
@@ -507,23 +529,15 @@ basicStmt = try (
    first <- assign
    return first
   ) <|> try (
-  -- print
-  do 
-    first <- printToken
-    things <- listParam
-    return (UniTree NonTPrint things)
-  ) <|> try (
   -- ptr apontar : ponteiro => new int;
   do
     first <- point_to
-    colon <- semicolonToken
     return first
   ) <|> try (
   -- delete ponteiro 
   do 
     token <- deleteToken
     id    <- exprId
-    colon <- semicolonToken
     return (UniTree NonTDelPtr (UniTree NonTId id) )
   )
 
@@ -830,20 +844,18 @@ whileLoop = try (
 
 -- Não testado o for
 forLoop :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-forLoop = try (
-  do
-    a <- forToken
-    b <- openParenthToken
-    c <- basicStmts
-    d <- semicolonToken
-    e <- expr0
-    f <- semicolonToken
-    g <- basicStmts
-    h <- closeParenthToken
-    i <- stmts
-    j <- endForToken
-    return (QuadTree NonTFor (UniTree NonTId c) e g i)
-  )
+forLoop = do
+  a <- forToken
+  b <- openParenthToken
+  c <- basicStmt
+  d <- semicolonToken
+  e <- expr0
+  f <- semicolonToken
+  g <- basicStmt
+  h <- closeParenthToken
+  i <- stmts
+  j <- endForToken
+  return (QuadTree NonTFor (UniTree NonTId c) e g i)
 
 -- &&  ||
 expr0 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
