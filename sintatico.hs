@@ -40,7 +40,6 @@ data NonTToken =
   NonTPtrOp              |
   NonTArray              |
   NonTParams             |
-  NonTParam              |
   NonTListIndex          |
   NonTIndex              |
   NonTDecl               |
@@ -472,6 +471,7 @@ singleStmt = try (
   -- Fluxo
   do
    first <- jumpStmt
+   colon <- semicolonToken
    return first
   ) <|> try (
     -- Controle
@@ -613,7 +613,7 @@ funcDecl = try (
     s1     <- openScopeToken
     stmts  <- stmts
     s2     <- closeScopeToken
-    return (TriTree NonTFuncDecl (makeToken id) t stmts)
+    return (QuadTree NonTFuncDecl (makeToken id) None t stmts)
   )
 
 procDec :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -1153,7 +1153,7 @@ listParam = try (
   -- param
   do 
     a <- expr0
-    return ( UniTree NonTParam a)
+    return (UniTree NonTParams a)
   )
 
 exprId :: ParsecT [Token] [(Token,Token)] IO(TokenTree)

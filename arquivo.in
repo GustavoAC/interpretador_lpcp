@@ -3,18 +3,22 @@ function teste (int a, b, c; float d, e, f) : int {
 	float teste2 = 2.3;
 
 	delete exemplo;
+	return a;
+}
+
+function soma (int a, b; ptr int pont) : int {
+	$pont = a + b;
+	return 0;
 }
 
 function func_vazia () : int { 
-	print(a); 
+	return 4;
 }
 
-procedure p (int a; string b; bool c = true) { 
-	print(func_vazia());
-}
+int integer = 4;
+ptr int pont;
 
-procedure p_vazia () { 
-	print(func_vazia());
-}
+pont => integer;
+int trash = soma(2, 4, pont);
 
-print a, b;
+print $pont;
