@@ -4,7 +4,7 @@ int inter1 = 0, inter2 = 0, inter3 = 0, inter4 = 0
 
 while (controle == 1)
   
-   scan numero;
+   float numero = scan float;
    if (numero < 0)
        break;
    endif
