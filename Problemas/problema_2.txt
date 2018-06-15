@@ -1,0 +1,30 @@
+float controle = 1;
+
+int inter1 = 0, inter2 = 0, inter3 = 0, inter4 = 0
+
+while (controle == 1)
+  
+   scan numero;
+   if (numero < 0)
+       break;
+   endif
+   elif (numero >= 0) && (numero<=25)
+       inter1 = inter1 + 1;
+   endelif
+   elif (numero >= 26) && (numero<=50)
+       inter2 = inter2 + 1;
+   endelif
+   elif (numero >= 51) && (numero<=75)
+       inter3 = inter3 + 1;
+   endelif
+   elif (numero >= 76) && (numero<=100)
+       inter4 = inter4 + 1;
+   endelif
+
+endwhile
+
+
+print inter1;
+print inter2;
+print inter3;
+print inter4;

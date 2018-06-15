@@ -1,0 +1,11 @@
+float x,y, exp;
+int c;
+
+x = 3.0;
+y = 5.0;
+
+c = 1;
+
+exp = x^2 - y + c
+
+print exp;
