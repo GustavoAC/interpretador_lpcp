@@ -49,7 +49,8 @@ data NonTToken =
   NonTListIds            |
   NonTPtrType            |
   NonTListType           |
-  NonTStructType
+  NonTStructType         |
+  NonTListDecls     
   deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
@@ -431,13 +432,13 @@ update_pos pos _ []      = pos
 
 --         Parsec   input       state         output
 program :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-program = {-- try (
+program = try (
   do
     a <- structDecls
     b <- funcDecls
     c <- stmts
     return (TriTree NonTProgram a b c)
-  ) <|> --} try (
+  ) <|> try (
   do
     b <- funcDecls
     c <- stmts
@@ -585,20 +586,36 @@ structDecls = try (
   ) <|> try (
   -- <structDecls>
   do
-    s_decl  <- funcDecl
+    s_decl  <- structDecl
     return (UniTree NonTStructDecls s_decl)
   )
 
 structDecl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 structDecl = try (
-  -- struct <id> { <stmts> }
+  -- struct <id> { <listDecls> }
   do
     token <- structToken
     id    <- idToken
     s1    <- openScopeToken
-    stmt  <- stmts
-    s2    <- closeBracketToken
-    return (DualTree NonTStructDecl (makeToken id) stmt)
+    decls <- listDecls 
+    s2    <- closeScopeToken
+    return (DualTree NonTStructDecl (makeToken id) decls)
+  )
+
+listDecls :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+listDecls = try (
+  -- tipo id, id = valor; ...
+  do
+    d1 <- decl
+    v  <- semicolonToken
+    l  <- listDecls
+    return (DualTree NonTListDecls d1 l)
+  ) <|> try (
+  -- tipo id, id = valor;
+  do
+    d <- decl
+    v <- semicolonToken
+    return d
   )
 
 funcDecl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
