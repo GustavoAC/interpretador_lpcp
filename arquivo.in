@@ -8,14 +8,29 @@ struct aaa {
 	float bb;
 }
 
-procedure kadn () {
-	int a;	
+function teste (int a, b, c; float d, e, f) : int { 
+	ptr int exemplo, t => new int, p => a;
+	float teste2 = 2.3;
+
+	delete exemplo;
+	return a;
 }
 
-blalba = e;
-delete a;
-if (a < 5) then
-	print(a);
-endif
+function soma (int a, b; ptr int pont) : int {
+	$pont = a + b;
+	return 0;
+}
 
-int a => teste, b => new float, c, d => new int;
+function func_vazia () : int { 
+	return 4;
+}
+
+int integer = 4;
+ptr int pont;
+
+pont => integer;
+int trash = soma(2, 4, pont);
+
+print $pont;
+
+instancia.bb = 3.0;

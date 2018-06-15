@@ -41,11 +41,11 @@ data NonTToken =
   NonTPtrOp              |
   NonTArray              |
   NonTParams             |
-  NonTParam              |
   NonTListIndex          |
   NonTIndex              |
   NonTDecl               |
   NonTPrint              |
+  NonTAccessStruct       |
   NonTListIds            |
   NonTPtrType            |
   NonTListType           |
@@ -387,6 +387,11 @@ commaToken = tokenPrim show update_pos get_token where
   get_token (Comma pos) = Just (Comma pos)
   get_token _               = Nothing
 
+endPointToken :: ParsecT [Token] st IO (Token)
+endPointToken = tokenPrim show update_pos get_token where
+  get_token (EndPoint pos) = Just (EndPoint pos)
+  get_token _               = Nothing
+
 attribToken :: ParsecT [Token] st IO (Token)
 attribToken = tokenPrim show update_pos get_token where
   get_token (Attrib pos) = Just (Attrib pos)
@@ -474,6 +479,7 @@ singleStmt = try (
   -- Fluxo
   do
    first <- jumpStmt
+   colon <- semicolonToken
    return first
   ) <|> try (
     -- Controle
@@ -645,7 +651,7 @@ funcDecl = try (
     s1     <- openScopeToken
     stmts  <- stmts
     s2     <- closeScopeToken
-    return (TriTree NonTFuncDecl (makeToken id) t stmts)
+    return (QuadTree NonTFuncDecl (makeToken id) None t stmts)
   )
 
 procDec :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -1187,7 +1193,7 @@ listParam = try (
   -- param
   do 
     a <- expr0
-    return ( UniTree NonTParam a)
+    return (UniTree NonTParams a)
   )
 
 exprId :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -1217,13 +1223,20 @@ exprId = try (
   ) <|> try (
   -- a[] 
   do 
-    a <- idToken -- Substituir por um nome mesmo, não só um token
+    a <- idToken
     b <- listIndexes
     return (DualTree NonTArray (makeToken a) b) -- ?
-  ) <|> (
+  ) <|> try (
+  -- a.prop
+  do 
+    a <- idToken
+    b <- endPointToken
+    c <- idToken
+    return (DualTree NonTAccessStruct (makeToken a) (makeToken c))
+  ) <|> try (
   -- a
   do 
-    a <- idToken -- Substituir por um nome mesmo, não só um token
+    a <- idToken
     return (LeafToken a)
   )
 
@@ -1253,9 +1266,9 @@ parser tokens = runParserT program [] "Error message" tokens
 {--
   Descomente para usar o main local
 --}
+
 main :: IO ()
 main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
              { Left err -> print err; 
                Right ans -> print ans
              }
-

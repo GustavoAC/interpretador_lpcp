@@ -25,6 +25,7 @@ tokens :-
   \:                                          { \p s -> Colon p }
   \;                                          { \p s -> Semicolon p }
   \,                                          { \p s -> Comma p }
+  \.                                          { \p s -> EndPoint p }
   \=\=                                        { \p s -> SymBoolEq p }
   \!\=                                        { \p s -> SymBoolNotEq p }
   \<\=                                        { \p s -> SymBoolLessThanEq p }
@@ -109,6 +110,7 @@ data Token =
   Colon AlexPosn                  |
   Semicolon AlexPosn              |
   Comma AlexPosn                  |
+  EndPoint AlexPosn               |
   SymPtrOp AlexPosn               |
   SymAdressOp AlexPosn            |
   Print AlexPosn                  |

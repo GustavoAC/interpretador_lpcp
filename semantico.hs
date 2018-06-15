@@ -5,7 +5,8 @@ import System.IO.Unsafe
 
 
 -- ListaDeStructs(nome [campos (nome typo)]) ListaDeProcedimentos(Id Parâmetros BlocoDaFunção) ListaDeFunções(Id TipodeRetorno Parâmetros BlocoDaFunção) ListadeEscopos ListaDeVariáveis(Id Tipo Valor Escopo)
-data State = State SymbolTable (IO ())
+data State = State SymbolTable (IO ()) FlowFlag
+data FlowFlag = NoneFlag | BreakFlag | ContinueFlag | ReturnFlag deriving (Eq, Show)
 --                             structs  procedimentos funções escAtuais memoria
 data SymbolTable = SymbolTable [Struct] [Procedure] [Function] [Scope] Memory deriving (Eq, Show)
 --                          nome   campos   bloco
@@ -29,7 +30,7 @@ data Scope = Scope (String, Int) (String, Int) deriving (Eq, Show)
 data Field = Field Type String deriving (Show)
 -- Basta que os tipos sejam iguais para um field ser igual a outro.
 instance Eq Field where
-    (Field name1 type1) == (Field name2 type2) = (type1 == type2)
+    (Field type1 name1) == (Field type2 name2) = (type1 == type2)
 --                 listaDeVariaveis
 data Memory = Memory [Variable] deriving (Eq, Show)
 --                         id   tipo valor escopo
@@ -47,20 +48,26 @@ data Value = Int Int |
 data FieldInstance = FieldInstance Field Value deriving (Eq, Show)
 
 emptyState :: State
-emptyState = State (SymbolTable [] [] [] [(Scope ("main", 1) ("main", 1))] (Memory [])) (return ())
+emptyState = State (SymbolTable [] [] [] [(Scope ("main", 1) ("main", 1))] (Memory [])) (return ()) NoneFlag
 
 inicAnalisadorSemantico :: TokenTree -> IO()
 inicAnalisadorSemantico tree = getAnalisadorIO (analisadorSemantico tree emptyState)
 
 getAnalisadorIO :: State -> IO()
-getAnalisadorIO (State _ io) = io
+getAnalisadorIO (State _ io _) = io
 
 analisadorSemantico :: TokenTree -> State -> State
 -- printando a tabela ao fim da execucao
-analisadorSemantico (UniTree NonTProgram a) (State table io) = 
-    State table2 ((print table2) >> io2)
+analisadorSemantico (UniTree NonTProgram a) (State table io flag) = 
+    State table2 ((print table2) >> io2) fflag
     where
-        (State table2 io2) = analisadorSemantico a (State table io)
+        (State table2 io2 fflag) = analisadorSemantico a (State table io flag)
+
+analisadorSemantico (DualTree NonTProgram a b) st =
+    State table ((print table) >> io) fflag
+    where
+        (State table io fflag) = analisadorSemantico b st1
+        st1 = analisadorSemantico a st
 
 -- decl
 analisadorSemantico (DualTree NonTDecl declType ids) st = declareMany st (parseType declType) ids
@@ -79,15 +86,34 @@ analisadorSemantico (DualTree NonTWhile a b) st = resolveWhile st a b
 -- if 
 analisadorSemantico (TriTree NonTIf a b c) st = resolveIfCondition st a b c
 -- procNoArgs
-analisadorSemantico (UniTree NonTCallProcedure a) (State table io) = error "não implementado"
+analisadorSemantico (UniTree NonTCallProcedure a) (State table io _) = error "não implementado"
 -- procArgs
-analisadorSemantico (DualTree NonTCallProcedureArgs a b) (State table io) = error "não implementado"
+analisadorSemantico (DualTree NonTCallProcedureArgs a b) (State table io _) = error "não implementado"
 -- break
 -- analisadorSemantico (LeafToken Break) (State table io) = error "não implementado"
 -- return
--- analisadorSemantico (UniTree NonTReturn b) (State table io) = error "não implementado"
+analisadorSemantico (UniTree NonTReturn a) st = setReturnVal st a
 -- continue
 -- analisadorSemantico (LeafToken Continue) (State table io) = error "não implementado"
+
+-- declFuncSemParams
+analisadorSemantico (QuadTree NonTFuncDecl id params retType stmts) st =
+    declareFunction st id params retType stmts
+-- declFuncComParams
+-- analisadorSemantico (LeafToken Continue) (State table io) = error "não implementado"
+
+-- statements
+-- para de executar quando alguma flag está ativa
+analisadorSemantico (DualTree NonTStatements a b) st =
+    case flag of
+        ReturnFlag -> st1
+        _ -> analisadorSemantico b st1
+    where
+       st1 = analisadorSemantico a st
+       (State _ _ flag) = st1
+
+analisadorSemantico (UniTree NonTStatement a) st = 
+    analisadorSemantico a st
 
 -- -- repetidores genericos
 analisadorSemantico (QuadTree _ a b c d) st = 
@@ -116,29 +142,29 @@ declareMany :: State -> Type -> TokenTree -> State
 declareMany st typ (DualTree NonTListIds (LeafToken (Id _ id)) rest) =
     declareMany finalSt typ rest
     where
-        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st
+        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io flag) = st
         newVar = Variable id typ (defaultVal typ) currScope
         finalMem = instanciarVar mem newVar
-        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
+        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io flag)
 declareMany st typ (DualTree NonTListIds (DualTree NonTAssign (UniTree NonTId (LeafToken (Id _ id))) expr) rest) =
     declareMany finalSt typ rest
     where
         (st1, (exprTyp, exprVal)) = avaliarExpressao st expr
-        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st1
+        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io flag) = st1
         finalMem = declareWithVal mem id typ exprTyp exprVal currScope
-        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
+        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io flag)
 declareMany st typ (LeafToken (Id _ id)) = finalSt
     where
-        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st
+        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io flag) = st
         newVar = Variable id typ (defaultVal typ) currScope
         finalMem = instanciarVar mem newVar
-        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
+        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io flag)
 declareMany st typ (DualTree NonTAssign (UniTree NonTId (LeafToken (Id _ id))) expr) = finalSt
     where
         (st1, (exprTyp, exprVal)) = avaliarExpressao st expr
-        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io) = st1
+        (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io flag) = st1
         finalMem = declareWithVal mem id typ exprTyp exprVal currScope
-        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io)
+        finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io flag)
         
 
 declareWithVal :: [Variable] -> String -> Type -> Type -> Value -> Scope -> [Variable]
@@ -171,30 +197,30 @@ assignToId st id expr = finalState
     where
         (st1, exprRes) = avaliarExpressao st expr
         (st2, finalVal) = criarValorParaAtribuicao st1 id exprRes
-        (State (SymbolTable a b c d (Memory mem)) io) = st2
+        (State (SymbolTable a b c d (Memory mem)) io flag) = st2
         finalMem = atribuirVar mem finalVal
-        finalState = (State (SymbolTable a b c d (Memory finalMem)) io)
+        finalState = (State (SymbolTable a b c d (Memory finalMem)) io flag)
 
 pointToId :: State -> TokenTree -> TokenTree -> State
 pointToId st ptr (LeafToken (Id _ id)) = finalState
     where
-        (State (SymbolTable structs procs funcs scope (Memory mem)) io) = st
+        (State (SymbolTable structs procs funcs scope (Memory mem)) io flag) = st
         (Variable _ varTyp _ varSco) = lookUpScoped mem id scope
         (st2, finalVal) = criarValorParaAtribuicao st ptr ((PointerType varTyp), (Pointer id varSco))
-        (State (SymbolTable a b c d (Memory nextMem)) io2) = st2
+        (State (SymbolTable a b c d (Memory nextMem)) io2 flag2) = st2
         finalMem = atribuirVar nextMem finalVal
-        finalState = (State (SymbolTable a b c d (Memory finalMem)) io2)
+        finalState = (State (SymbolTable a b c d (Memory finalMem)) io2 flag2)
 pointToId st ptr typ = finalState
     where
-        (State (SymbolTable structs procs funcs scope (Memory mem)) io) = st
+        (State (SymbolTable structs procs funcs scope (Memory mem)) io flag) = st
         finalType = parseType typ
         newId = show (findNextHeapId mem)
         mem2 = instantiateNewHeapVar mem finalType newId
-        st1 = (State (SymbolTable structs procs funcs scope (Memory mem2)) io)
+        st1 = (State (SymbolTable structs procs funcs scope (Memory mem2)) io flag)
         (st2, finalVal) = criarValorParaAtribuicao st1 ptr ((PointerType finalType), (Pointer newId (Scope ("heap", -1) ("heap", -1))))
-        (State (SymbolTable a b c d (Memory mem3)) io2) = st2
+        (State (SymbolTable a b c d (Memory mem3)) io2 flag2) = st2
         finalMem = atribuirVar mem3 finalVal
-        finalState = (State (SymbolTable a b c d (Memory finalMem)) io2)
+        finalState = (State (SymbolTable a b c d (Memory finalMem)) io2 flag2)
 --                                               id
 instantiateNewHeapVar :: [Variable] -> Type -> String -> [Variable]
 instantiateNewHeapVar mem typ id = (Variable id typ (defaultVal typ) (Scope ("heap", -1) ("heap", -1))):mem
@@ -211,19 +237,57 @@ findNextHeapId ((Variable id typ val (Scope (name, depth) _)):mem) =
     where
         res = findNextHeapId mem
         
+assureFlagIsNot :: FlowFlag -> [FlowFlag] -> FlowFlag
+assureFlagIsNot f [] = NoneFlag
+assureFlagIsNot f (nf:flags) =
+    if f == nf then
+        error "Comando de controle inesperado"
+    else assureFlagIsNot f flags
+
+--                            id          params         tipo        stmts
+declareFunction :: State -> TokenTree -> TokenTree -> TokenTree -> TokenTree -> State
+declareFunction st (LeafToken (Id _ id)) params typ stmts = finalState
+    where
+        (State (SymbolTable structs procs funcs scope (Memory mem)) io flag) = st
+        retType = parseType typ
+        parsedParams = parseParams params
+        finalState = (State (SymbolTable structs procs ((Function id retType parsedParams stmts):funcs) scope (Memory mem)) io flag)
+
+parseParams :: TokenTree -> [Field]
+parseParams None = []
+parseParams (TriTree NonTVarDecls t list_ids v) =
+    (parseSubParams (parseType t) list_ids) ++ (parseParams v)
+parseParams (DualTree NonTVarDecls t list_ids) =
+    parseSubParams (parseType t) list_ids
+
+parseSubParams :: Type -> TokenTree -> [Field]
+parseSubParams typ (DualTree NonTListIds (LeafToken (Id _ id)) list) =
+    ((Field typ id):(parseSubParams typ list))
+parseSubParams typ (LeafToken (Id _ id)) = [(Field typ id)]
+parseSubParams typ _ = error ("Atribuições e parâmetros default não são permitidos")
+
+evalArgs :: State -> TokenTree -> (State, [(Type, Value)])
+evalArgs st (DualTree NonTParams expr next) = res
+    where
+        (st1, argRes) = avaliarExpressao st expr
+        (finalState, otherArgs) = evalArgs st1 next
+        res = (finalState, (argRes:otherArgs))
+evalArgs st (UniTree NonTParams expr) = (finalState, [argRes])
+    where
+        (finalState, argRes) = avaliarExpressao st expr
 -- TODO: TESTAR FAMÍLIA DE FUNÇÕES STARTPROCEDURE
 --       Trocar params de [String] pra [(Type, Value)] e avaliar por aqui
 --       Se cada valor passado é um id ou uma expressão.
 --                       procname        params
 startProcedure :: State -> String -> [(Type, Value)] -> State
-startProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) procName params =
-    runProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) proc params
+startProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) procName params =
+    runProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) proc params
     where
         -- acha o proc
         proc = findProc procs procName (fieldfy params)
 
 runProcedure :: State -> Procedure -> [(Type, Value)] -> State
-runProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) (Procedure procName fields procTree) params =
+runProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) (Procedure procName fields procTree) params =
     finalState
     where
         -- gera proximoescopo
@@ -232,19 +296,23 @@ runProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) 
         -- instancia coisas do proc
         newMem = instanciarParams mem params fields newStartingScope
         -- executa o proc no analisadorSemantico
-        (State (SymbolTable _ _ _ _ (Memory procFinalMem)) finalIo) = analisadorSemantico procTree (State (SymbolTable structs procs funcs [newStartingScope] (Memory newMem)) io)
+        (State (SymbolTable _ _ _ _ (Memory procFinalMem)) finalIo nextFlag) = analisadorSemantico procTree (State (SymbolTable structs procs funcs [newStartingScope] (Memory newMem)) io flag)
         -- deletar coisas do escopo aqui
         finalMem = cleanScopeFromMem procFinalMem newStartingScope
+        -- testar se flag está correta e em seguida resetar qualquer flag que houver
+        finalFlag = assureFlagIsNot nextFlag [ContinueFlag, BreakFlag]
         -- estadoFinal
-        finalState = (State (SymbolTable structs procs funcs oldScope (Memory finalMem)) finalIo)
+        finalState = (State (SymbolTable structs procs funcs oldScope (Memory finalMem)) finalIo finalFlag)
 runProcedure st (SysProcedure procName fields func) params =
     func st params
 
-
---                        funcName    params
+--                         funcName        params
 startFunction :: State -> TokenTree -> [(Type, Value)] -> (State, (Type, Value))
-startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io) (LeafToken (Id _ funcName)) params =
+startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) (LeafToken (Id _ funcName)) params =
     res
+    -- case nextFlag of
+    --     ReturnFlag -> res
+    --     _ -> error ("Esperava retorno na função " ++ funcName)
     where
         -- acha a func
         (Function _ retType fields funcTree) = findFunc funcs funcName (fieldfy params)
@@ -254,15 +322,28 @@ startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io)
         -- instancia coisas da func
         newMem = instanciarParams mem params fields newStartingScope
         -- executa a func no analisadorSemantico
-        (State (SymbolTable _ _ _ _ (Memory funcFinalMem)) finalIo) = analisadorSemantico funcTree (State (SymbolTable structs procs funcs [newStartingScope] (Memory newMem)) io)
+        (State (SymbolTable _ _ _ _ (Memory funcFinalMem)) finalIo nextFlag) = analisadorSemantico funcTree (State (SymbolTable structs procs funcs [newStartingScope] (Memory newMem)) io flag)
         -- Tentar pegar o retorno aqui
         returnedVal = getReturn funcFinalMem newStartingScope retType;
         -- deletar return aqui
         afterReturnDelMem = cleanScopeFromMem funcFinalMem (Scope (funcName, newStartingScopeDepth) ("return", 0))
         -- deletar coisas do escopo aqui
         finalMem = cleanScopeFromMem afterReturnDelMem newStartingScope
-        -- valor de retorno
-        res = ((State (SymbolTable structs procs funcs oldScope (Memory finalMem)) finalIo), returnedVal)
+        -- valor de retorno com flag nula
+        res = ((State (SymbolTable structs procs funcs oldScope (Memory finalMem)) finalIo NoneFlag), returnedVal)
+        -- tempThing = fieldfy params
+        -- finalIO = (io >> (print funcName) >> (print params) >> (print tempThing) >> (print retType))
+        -- res = ((State (SymbolTable structs procs funcs oldScope (Memory mem)) finalIO NoneFlag), ((IntType),(Int 3)))
+
+setReturnVal :: State -> TokenTree -> State
+setReturnVal (State (SymbolTable a b c d (Memory mem)) io _) None = (State (SymbolTable a b c d (Memory mem)) io ReturnFlag) 
+setReturnVal st expr = finalState
+    where
+        (State (SymbolTable a b c d (Memory mem)) io _) = st
+        (State (SymbolTable _ _ _ scopes (Memory nextMem)) nextIO _, (exprTyp, exprVal)) = avaliarExpressao st expr;
+        (Scope funcScope _) = head scopes
+        finalMem = instanciarVar nextMem (Variable "return" exprTyp exprVal (Scope funcScope ("return", 0)))
+        finalState = (State (SymbolTable a b c d (Memory finalMem)) nextIO ReturnFlag)
 
 getReturn :: [Variable] -> Scope -> Type -> (Type, Value)
 getReturn mem (Scope funcScope (_, _)) typ = 
@@ -298,14 +379,14 @@ cleanScopeFromMem ((Variable id typ val valEsc):mem) esc =
     else (Variable id typ val valEsc):(cleanScopeFromMem mem esc)
 
 startBlock :: TokenTree -> State -> String -> State
-startBlock stmts (State (SymbolTable a b c scopes mem) io) blocName = finalState
+startBlock stmts (State (SymbolTable a b c scopes mem) io flag) blocName = finalState
     where
 
         (Scope (func, funcDepth) (_, _)) = head scopes
         nextScope = (Scope (func, funcDepth) (blocName, findNextScopeDepthFromScope scopes blocName))
-        (State (SymbolTable _ _ _ _ (Memory afterMem)) finalIO) = analisadorSemantico stmts (State (SymbolTable a b c (nextScope:scopes) mem) io)
+        (State (SymbolTable _ _ _ _ (Memory afterMem)) finalIO finalFlag) = analisadorSemantico stmts (State (SymbolTable a b c (nextScope:scopes) mem) io flag)
         finalMem = cleanScopeFromMem afterMem nextScope
-        finalState = (State (SymbolTable a b c scopes (Memory finalMem)) finalIO)
+        finalState = (State (SymbolTable a b c scopes (Memory finalMem)) finalIO finalFlag)
 
 resolveWhile :: State -> TokenTree -> TokenTree -> State
 resolveWhile st cond stmts = 
@@ -375,28 +456,24 @@ avaliarExpressao st tree = case tree of
     UniTree nonT a -> case nonT of
         NonTInvokeFunction -> startFunction st a []
         NonTId -> avaliarExpressaoParseId st a
-    DualTree nonT a b -> case nonT of
-        NonTExpr -> case a of 
-            -- ! a
-            (LeafToken (SymBoolNot _)) -> res
-            where
-                (st1, (type1, val1)) = avaliarExpressao st a
-                res = (st1, exprBoolNot (type1, val1))
+    DualTree NonTExpr (LeafToken (SymBoolNot _)) b -> res
+        where
+            (st1, (type1, val1)) = avaliarExpressao st b
+            res = (st1, exprBoolNot (type1, val1))
         
-        NonTInvokeFunctionArgs -> error "não implementado ainda" -- res
-            -- where
-                -- (State, [(Type, Value)])
-                -- (st1, (args)) = evalArgs st b
-                -- nome = algo
-                -- res = startProcedure st1 nome args -- modificar para funçao
+    DualTree NonTInvokeFunctionArgs a b -> res
+        where
+            -- (State, [(Type, Value)])
+            (st1, args) = evalArgs st b
+            res = startFunction st1 a args -- modificar para funçao
     TriTree nonT a b c -> case nonT of
         NonTExpr -> triTreeExprParser st b a c
 
 avaliarExpressaoParseId :: State -> TokenTree -> (State, (Type, Value))
-avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io) (LeafToken (Id _ id)) = res
+avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io flag) (LeafToken (Id _ id)) = res
     where
         (Variable _ typ val _) = lookUpScoped mem id scopes
-        res = ((State (SymbolTable a b c scopes (Memory mem)) io), (typ, val))
+        res = ((State (SymbolTable a b c scopes (Memory mem)) io flag), (typ, val))
 avaliarExpressaoParseId st (UniTree NonTPtrOp a) = dereferencePtr (avaliarExpressaoParseId st a)
 avaliarExpressaoParseId st (DualTree NonTArray idm indexes) =
     getMatrixVal st1 typ searchedVal indexes
@@ -404,10 +481,10 @@ avaliarExpressaoParseId st (DualTree NonTArray idm indexes) =
         (st1, (typ, searchedVal)) = avaliarExpressaoParseId st idm
 
 dereferencePtr :: (State, (Type, Value)) -> (State, (Type, Value))
-dereferencePtr ((State (SymbolTable a b c d (Memory mem)) io), (_, Pointer id esc)) = res
+dereferencePtr ((State (SymbolTable a b c d (Memory mem)) io flag), (_, Pointer id esc)) = res
     where
         (Variable _ typ val _) = lookUpWrapper mem id esc
-        res = ((State (SymbolTable a b c d (Memory mem)) io), (typ, val))
+        res = ((State (SymbolTable a b c d (Memory mem)) io flag), (typ, val))
 
 
 getMatrixVal :: State -> Type -> Value -> TokenTree -> (State, (Type, Value))
@@ -659,7 +736,7 @@ findProc ((SysProcedure procName procFields func):procs) tarName tarFields =
 
 --            funcoes      nome      tipos
 findFunc :: [Function] -> String -> [Field] -> Function
-findFunc [] _ _ = error "Função não declarado"
+findFunc [] _ _ = error "Função não declarada"
 findFunc ((Function funcName retType funcFields tree):funcs) tarName tarFields =
     if funcName == tarName && funcFields == tarFields
         then (Function funcName retType funcFields tree)
@@ -712,42 +789,36 @@ atribuirVar ((Variable vId vTyp vVal vSc):mem) (Variable id typ val sc) =
 -- memória e após isso basta chamar a função de atribuição nela
 --                          estado    idMagico    doquevaiseratrib escopoatual
 criarValorParaAtribuicao :: State -> TokenTree -> (Type, Value) -> (State, Variable)
-criarValorParaAtribuicao (State (SymbolTable strts procs funcs esc (Memory mem)) io) (UniTree NonTId id) (newTyp, newVal) =
-    if newTyp == (criarValorParaAtribuicao_unfoldTypes realTyp list)
-        then (finalSt, (criarValorFinal mem ((Variable targetId realTyp finalVal targetEsc), list)))
-    else error "Tipos incompatíves na atribuição"
+criarValorParaAtribuicao st (UniTree NonTId id) (newTyp, newVal) =
+        (finalSt, (criarValorFinal mem (foundVar, list) (newTyp, newVal)))
     where
-        (finalSt, ((Variable targetId realTyp finalVal targetEsc), list)) = encontrarVarAlvo (State (SymbolTable strts procs funcs esc (Memory mem)) io) id newVal
-
-criarValorParaAtribuicao_unfoldTypes :: Type -> [Value] -> Type
-criarValorParaAtribuicao_unfoldTypes typ [] = typ
-criarValorParaAtribuicao_unfoldTypes (ListType typ) (a:inds) = criarValorParaAtribuicao_unfoldTypes typ inds
+        (finalSt, (foundVar, list)) = encontrarVarAlvo st id
+        (State (SymbolTable a b c d (Memory mem)) io flag) = finalSt
 
 -- IdMagico = IdNormal String | DereferenceOf IdMagico | AtIndex IdMagico Value
 -- Special = Spec Variable [Int]
---              memoria      idMagico  aseratrib escopoatual     (Variável carrega o tipo ESPERADO)
---                                                               (Também o valor final)
-encontrarVarAlvo :: State -> TokenTree -> Value -> (State, (Variable, [Value]))
+--              memoria      idMagico       (Variável é o alvo a ser modificado)
+encontrarVarAlvo :: State -> TokenTree -> (State, (Variable, [Value]))
 -- IdBase
-encontrarVarAlvo st (LeafToken (Id _ id)) newVal = var
+encontrarVarAlvo st (LeafToken (Id _ id)) = res
     where
-        (State (SymbolTable _ _ _ esc (Memory mem)) _) = st
-        (Variable _ typ oldval varEsc) = lookUpScoped mem id esc
-        var = (st, ((Variable id typ newVal varEsc), []))
+        (State (SymbolTable _ _ _ esc (Memory mem)) _ _) = st
+        var = lookUpScoped mem id esc
+        res = (st, (var, []))
 -- Pointers
-encontrarVarAlvo st (UniTree NonTPtrOp idm) val =
+encontrarVarAlvo st (UniTree NonTPtrOp idm) =
     if checkForPtrType solvedValue
         then (finalSt, (encontrarVarAlvo_decypherPtr mem (Variable newId typ solvedValue newEsc), []))
-    else error "Tentando dereferenciar algo que não é ponteiro"
+    else error ("Tentando dereferenciar algo que não é ponteiro" ++ (show solvedValue))
     where
-        (finalSt, ((Variable newId typ newVal newEsc), newList)) = encontrarVarAlvo st idm val
-        (State (SymbolTable _ _ _ _ (Memory mem)) _) = finalSt
+        (finalSt, ((Variable newId typ newVal newEsc), newList)) = encontrarVarAlvo st idm
+        (State (SymbolTable _ _ _ _ (Memory mem)) _ _) = finalSt
         solvedValue = (encontrarVarAlvo_getMatrixVal (newVal, newList))
 -- Array
-encontrarVarAlvo st (DualTree NonTArray idm indexes) val =
+encontrarVarAlvo st (DualTree NonTArray idm indexes) =
     (finalSt, (var, (prevIndexes ++ nextIndexes)))
     where
-        (st1, (var, prevIndexes)) = encontrarVarAlvo st idm val
+        (st1, (var, prevIndexes)) = encontrarVarAlvo st idm
         (finalSt, nextIndexes) = encontrarVarAlvo_translateIndexes st1 indexes
 
 encontrarVarAlvo_translateIndexes :: State -> TokenTree -> (State, [Value])
@@ -786,21 +857,23 @@ encontrarVarAlvo_getMatrixVal (val, []) = val
 encontrarVarAlvo_getMatrixVal ((List val), ((Int i):l)) = encontrarVarAlvo_getMatrixVal ((returnNthOfList val i), l)
 encontrarVarAlvo_getMatrixVal (val, (_:l)) = error "Index inválido"
 
---               memoria       Special          Variavel final
-criarValorFinal :: [Variable] -> (Variable, [Value]) -> Variable
-criarValorFinal mem ((Variable idm typ val escm), indexes) =
+--                  memoria  Variavel com acessos | Valor a ser escrito | Variavel final
+criarValorFinal :: [Variable] -> (Variable, [Value]) -> (Type, Value) -> Variable
+criarValorFinal mem ((Variable idm typ currVal escm), indexes) valToChange =
     Variable idm typ finalVal escm
     where
-        Variable currId currTyp currVal currEsc = lookUpWrapper mem idm escm
-        finalVal = criarValorFinal_resolveMatrix currVal val indexes
+        finalVal = criarValorFinal_resolveMatrix (typ, currVal) valToChange indexes
 
---            ValorDaV  NovoValor Indices   ValorFinal
-criarValorFinal_resolveMatrix :: Value -> Value -> [Value] -> Value
-criarValorFinal_resolveMatrix oldVal newVal [] = newVal
-criarValorFinal_resolveMatrix (List vals) newVal ((Int i):l) = 
+--                                  ValorDaV        NovoValor      Indices   ValorFinal
+criarValorFinal_resolveMatrix :: (Type, Value) -> (Type,Value) -> [Value] -> Value
+criarValorFinal_resolveMatrix (expTyp, oldVal) (newTyp, newVal) [] =
+    if expTyp == newTyp then
+        newVal
+    else error "Tipos incompatíveis na atribuição"
+criarValorFinal_resolveMatrix ((ListType typ), (List vals)) newVal ((Int i):l) = 
     (List ((listUpTo vals i) ++ [modVal] ++ (listFromToEnd vals (i+1))))
     where
-        modVal = (criarValorFinal_resolveMatrix (returnNthOfList vals i) newVal l)
+        modVal = (criarValorFinal_resolveMatrix (typ, (returnNthOfList vals i)) newVal l)
 
 listUpTo :: [a] -> Int -> [a]
 listUpTo _ 0 = []
@@ -819,12 +892,12 @@ listFromToEnd _ _ = error "Out of bounds" -- implica que a lista é vazia e indi
 printAll :: State -> TokenTree -> State
 printAll st (DualTree NonTParams expr next) = printAll st1 next
     where
-        ((State midTable midIO), (typ, val)) = avaliarExpressao st expr
+        ((State midTable midIO flag), (typ, val)) = avaliarExpressao st expr
         nextIO = midIO >> (printOne val)
-        st1 = (State midTable nextIO)
-printAll st (UniTree NonTParam expr) = (State midTable finalIO)
+        st1 = (State midTable nextIO flag)
+printAll st (UniTree NonTParams expr) = (State midTable finalIO flag)
     where
-        ((State midTable midIO), (typ, val)) = avaliarExpressao st expr
+        ((State midTable midIO flag), (typ, val)) = avaliarExpressao st expr
         finalIO = midIO >> (printOne val) >> (putStrLn "")
 
 printOne :: Value -> IO()
@@ -851,9 +924,9 @@ deletePointer st id =
         (midState, (exprTyp, exprVal)) = avaliarExpressao st id;
 
 deletePointerFromHeap :: State -> Value -> State
-deletePointerFromHeap (State (SymbolTable a b c d (Memory mem)) io) (Pointer id esc) =
+deletePointerFromHeap (State (SymbolTable a b c d (Memory mem)) io flag) (Pointer id esc) =
     if (scopeName == "heap" && depth == -1)
-        then (State (SymbolTable a b c d (Memory (deletePointerFromHeapMem mem id esc))) io)
+        then (State (SymbolTable a b c d (Memory (deletePointerFromHeapMem mem id esc))) io flag)
     else error "Impossível deletar variáveis não alocadas dinamicamente"
     where
         (Scope (scopeName, depth) _) = esc
