@@ -59,6 +59,7 @@ tokens :-
   \=\>                                        { \p s -> SymPtrOp p }
   \$                                          { \p s -> SymAdressOp p }
   print                                       { \p s -> Print p }
+  scan                                        { \p s -> Scan p }
   do                                          { \p s -> Do p }
   endfor                                      { \p s -> EndFor p }
   for                                         { \p s -> For p }  
@@ -114,6 +115,7 @@ data Token =
   SymPtrOp AlexPosn               |
   SymAdressOp AlexPosn            |
   Print AlexPosn                  |
+  Scan AlexPosn                   |
   Do AlexPosn                     |
   If AlexPosn                     |
   EndIf AlexPosn                  |

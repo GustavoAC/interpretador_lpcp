@@ -46,6 +46,7 @@ data NonTToken =
   NonTDecl               |
   NonTPrint              |
   NonTAccessStruct       |
+  NonTScan               |
   NonTListIds            |
   NonTPtrType            |
   NonTListType           |
@@ -400,6 +401,11 @@ attribToken = tokenPrim show update_pos get_token where
 printToken :: ParsecT [Token] st IO (Token)
 printToken = tokenPrim show update_pos get_token where
   get_token (Print pos)  = Just (Print pos)
+  get_token _            = Nothing
+
+scanToken :: ParsecT [Token] st IO (Token)
+scanToken = tokenPrim show update_pos get_token where
+  get_token (Scan pos)  = Just (Scan pos)
   get_token _            = Nothing
 
 procedureToken :: ParsecT [Token] st IO (Token)
@@ -772,10 +778,42 @@ types = try (
 
 assign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 assign = do
-          a <- exprId
-          b <- attribToken
-          c <- expr0
-          return (DualTree NonTAssign (UniTree NonTId a) c)
+            a <- exprId
+            b <- attribToken
+            c <- rightHandAssign
+            return (DualTree NonTAssign (UniTree NonTId a) c)
+  
+
+rightHandAssign :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+rightHandAssign = try (
+    do
+      a <- expr0
+      return a
+  ) <|> try (
+    do
+      a <- scanToken
+      b <- scanType
+      return (UniTree NonTScan b)
+  )
+
+scanType :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+scanType = try (
+    do
+      a <- typeIntToken
+      return (LeafToken a)
+  ) <|> try (
+    do
+      a <- typeFloatToken
+      return (LeafToken a)
+  ) <|> try (
+    do
+      a <- typeStringToken
+      return (LeafToken a)
+  ) <|> try (
+    do
+      a <- typeBooleanToken
+      return (LeafToken a)
+  )
 
 point_to :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 point_to = try (
