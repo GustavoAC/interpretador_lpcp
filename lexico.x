@@ -84,7 +84,7 @@ tokens :-
   struct                                      { \p s -> StructTok p }
   debugPrint                                  { \p s -> DebugTok p }
   $alpha [$alpha $digit \_ \']*               { \p s -> Id p s }
-  \" [$alpha $digit ! \_ \' $white]* \"       { \p s -> StrLit p (firstLast s) }
+  \" [^\"]* \"       { \p s -> StrLit p (firstLast s) }
 {
 firstLast :: [a]->[a]
 firstLast [] = []

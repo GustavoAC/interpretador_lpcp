@@ -17,11 +17,19 @@ instance Eq Procedure where
     (SysProcedure a1 b1 c1) == (SysProcedure a2 b2 c2) = ((a1 == a2) && (b1 == b2))
     (Procedure a1 b1 c1) == (Procedure a2 b2 c2) = ((a1 == a2) && (b1 == b2) && (c1 == c2))
 instance Show Procedure where
-    show (SysProcedure a b c) = show a ++ " " ++ show b  ++ " sys function"
+    show (SysProcedure a b c) = show a ++ " " ++ show b  ++ " sys procedure"
     show (Procedure a b c) = show a ++ " " ++ show b  ++ " " ++ show c
 
 --                        nome retorno campos bloco
-data Function = Function String Type [Field] TokenTree deriving (Eq, Show)
+data Function = Function String Type [Field] TokenTree |
+                SysFunction String Type [Field] (State -> [(Type, Value)] -> (State, (Type, Value)))
+instance Eq Function where
+    (SysFunction a1 b1 c1 d1) == (SysFunction a2 b2 c2 d2) = ((a1 == a2) && (b1 == b2) && (c1 == c2))
+    (Function a1 b1 c1 d1) == (Function a2 b2 c2 d2) = ((a1 == a2) && (b1 == b2) && (c1 == c2) && (d1 == d2))
+instance Show Function where
+    show (SysFunction a b c d) = show a ++ " " ++ show b  ++ " " ++ show c ++ " sys function"
+    show (Function a b c d) = show a ++ " " ++ show b  ++ " " ++ show c ++ " " ++ show d
+                
 --                    nome  campos
 data Struct = Struct String [Field] deriving (Eq, Show)
 --                 (nome e profundidade do subprograma) (nome e profundidade do subbloco)
@@ -73,14 +81,33 @@ setListSizeAux l _ 0 = []
 setListSizeAux [] t i = (defaultVal t):(setListSizeAux [] t (i-1))
 setListSizeAux (e:l) t i = e:(setListSizeAux l t (i-1))
 
+pushBack :: State -> [(Type, Value)] -> State
+pushBack st (((PointerType (ListType typ1)), (Pointer id scp)):(typ2, newVal):[]) =
+    if (typ1 == typ2) then
+        finalState
+    else error ("Tipos incompatíveis na função pushBack: esperava " ++ (show typ1) ++ " e encontrou-se "++ (show typ2))
+    where
+        (State (SymbolTable a b c d (Memory mem)) io flag) = st
+        (Variable _ _ (List val) _) = lookUpWrapper mem id scp
+        finalVal = val ++ [newVal]
+        finalMem = atribuirVar mem (Variable id (ListType typ1) (List finalVal) scp)
+        finalState = (State (SymbolTable a b c d (Memory finalMem)) io flag)
+
+listLength :: State -> [(Type, Value)] -> (State, (Type, Value))
+listLength st ((ListType _, List val):[]) = (st, (IntType, Int (length val)))
+listLength st ((StringType, (String val)):[]) = (st, (IntType, Int (length val)))
+
+-- FUNÇÕES DO ANALISADOR SINTÁTICO
 emptyState :: State
 emptyState = State (SymbolTable [] startingProcedures startingFunctions [(Scope ("main", 1) ("main", 1))] (Memory [])) (return ()) NoneFlag
 
 -- coloque as funções feitas aqui
 startingProcedures :: [Procedure]
-startingProcedures = [(SysProcedure "setListSize" [(Field (PointerType (ListType AnyType)) ""),(Field IntType "")] setListSize)]
+startingProcedures = [(SysProcedure "setListSize" [(Field (PointerType (ListType AnyType)) ""),(Field IntType "")] setListSize),
+                      (SysProcedure "pushBack" [(Field (PointerType (ListType AnyType)) ""),(Field AnyType "")] pushBack)] 
 startingFunctions :: [Function]
-startingFunctions = []
+startingFunctions = [(SysFunction "len" IntType [(Field (ListType AnyType) "")] listLength),
+                     (SysFunction "len" IntType [(Field StringType "")] listLength)]
 
 inicAnalisadorSemantico :: TokenTree -> IO()
 inicAnalisadorSemantico tree = getAnalisadorIO (analisadorSemantico tree emptyState)
@@ -350,9 +377,7 @@ evalArgs st (DualTree NonTParams expr next) = res
 evalArgs st (UniTree NonTParams expr) = (finalState, [argRes])
     where
         (finalState, argRes) = avaliarExpressao st expr
--- TODO: TESTAR FAMÍLIA DE FUNÇÕES STARTPROCEDURE
---       Trocar params de [String] pra [(Type, Value)] e avaliar por aqui
---       Se cada valor passado é um id ou uma expressão.
+
 --                       procname        params
 startProcedure :: State -> String -> [(Type, Value)] -> State
 startProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) procName params =
@@ -384,10 +409,14 @@ runProcedure st (SysProcedure procName fields func) params =
 --                         funcName        params
 startFunction :: State -> TokenTree -> [(Type, Value)] -> (State, (Type, Value))
 startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) (LeafToken (Id _ funcName)) params =
-    res
+    runFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) foundFunc params
     where
         -- acha a func
-        (Function _ retType fields funcTree) = findFuncWrapper funcs funcName (fieldfy params)
+        foundFunc = findFuncWrapper funcs funcName (fieldfy params)
+runFunction :: State -> Function -> [(Type, Value)] -> (State, (Type, Value))
+runFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) (Function funcName retType fields funcTree) params =
+    res
+    where
         -- gera proximoescopo
         newStartingScopeDepth = findNextScopeDepthFromMem mem funcName
         newStartingScope = Scope (funcName, newStartingScopeDepth) (funcName, 1)
@@ -404,8 +433,8 @@ startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io 
         -- valor de retorno com flag nula
         res = ((State (SymbolTable structs procs funcs oldScope (Memory finalMem)) finalIo NoneFlag), returnedVal)
         -- tempThing = fieldfy params
-        -- finalIO = (io >> (print funcName) >> (print params) >> (print tempThing) >> (print retType))
-        -- res = ((State (SymbolTable structs procs funcs oldScope (Memory mem)) finalIO NoneFlag), ((IntType),(Int 3)))
+runFunction st (SysFunction funcName retType fields func) params =
+    func st params
 
 setReturnVal :: State -> TokenTree -> State
 setReturnVal (State (SymbolTable a b c d (Memory mem)) io _) None = (State (SymbolTable a b c d (Memory mem)) io ReturnFlag) 
@@ -828,6 +857,10 @@ findFunc [] _ _ = Nothing
 findFunc ((Function funcName retType funcFields tree):funcs) tarName tarFields =
     if funcName == tarName && funcFields == tarFields
         then Just (Function funcName retType funcFields tree)
+    else findFunc funcs tarName tarFields
+findFunc ((SysFunction funcName retType funcFields func):funcs) tarName tarFields =
+    if funcName == tarName && funcFields == tarFields
+        then Just (SysFunction funcName retType funcFields func)
     else findFunc funcs tarName tarFields
 
 --            structs      nome

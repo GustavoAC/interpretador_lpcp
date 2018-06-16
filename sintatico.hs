@@ -1,5 +1,5 @@
 -- Comente para executar o main local
--- module Sintatico (TokenTree(..), NonTToken(..), parser) where
+module Sintatico (TokenTree(..), NonTToken(..), parser) where
 
 
 import Lexico
@@ -1312,8 +1312,8 @@ parser tokens = runParserT program [] "Error message" tokens
 {--
   Descomente para usar o main local
 --}
-main :: IO ()
-main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
-              { Left err -> print err; 
-                Right ans -> print ans
-              }
+-- main :: IO ()
+-- main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
+--               { Left err -> print err; 
+--                 Right ans -> print ans
+--               }

@@ -1,19 +1,12 @@
-int a;
-if (a == 0) then
-	print a;
-else
-	print "mentira";
-endif
+[int] lista;
+ptr [int] listaRef;
+listaRef => lista;
 
-if (a < 0) then
-	print "mentira";
-else if (a == 0) then
-	a = 5;
-	if (a == 3) then
-		print "mentira";
-	else if (a == 4) then
-		print "mentira";
-	else
-		print "show";
-	endif
-endif
+pushBack(listaRef, 1);
+pushBack(listaRef, 2);
+pushBack(listaRef, 3);
+pushBack(listaRef, 4);
+pushBack(listaRef, 5);
+pushBack(listaRef, 6);
+pushBack(listaRef, 7);
+print "Tamanho da lista: ", len(lista), "/ Lista: ", lista;
