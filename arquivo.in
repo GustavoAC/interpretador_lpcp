@@ -33,4 +33,4 @@ int trash = soma(2, 4, pont);
 
 print $pont;
 
-instancia.bb = 3.0;
+a = 3;

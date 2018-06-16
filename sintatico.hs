@@ -1267,10 +1267,10 @@ exprId = try (
   ) <|> try (
   -- a.prop
   do 
-    a <- idToken
+    a <- exprId
     b <- endPointToken
-    c <- idToken
-    return (DualTree NonTAccessStruct (makeToken a) (makeToken c))
+    c <- exprId
+    return (DualTree NonTAccessStruct a c)
   ) <|> try (
   -- a
   do 
