@@ -28,7 +28,6 @@ data NonTToken =
   NonTPointTo |
   NonTIf |
   NonTElse |
-  NonTElif |
   NonTWhile |
   NonTExpr |
   NonTInvokeFunction |
@@ -859,7 +858,7 @@ loop = try (
 
 condition :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 condition = try (
-  -- if(<expr>) then <stmts> endif ...
+  -- if(<expr>) then <stmts> else (if)...
   do
     ifsymb <- ifToken
     p1 <- openParenthToken
@@ -867,8 +866,19 @@ condition = try (
     p2 <- closeParenthToken
     d <- thenToken
     s <- stmts
-    endifsymb <- endIfToken
-    cond2 <- condition2 
+    elsesymb <- elseToken
+    cond <- condition
+    return (TriTree NonTIf e s cond)
+  ) <|> try (
+  -- if(<expr>) then <stmts> else ... endif
+  do
+    ifsymb <- ifToken
+    p1 <- openParenthToken
+    e <- expr0
+    p2 <- closeParenthToken
+    d <- thenToken
+    s <- stmts
+    cond2 <- condition2
     return (TriTree NonTIf e s cond2)
   ) <|> try (
   -- if(<expr>) then <stmts> endif
@@ -885,35 +895,11 @@ condition = try (
 
 condition2 :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 condition2 = try (
-  -- elif (<expr>) then <stmts> endelif <condition2>
-  do
-    elifsymb <- elifToken
-    p1 <- openParenthToken
-    e <- expr0
-    p2 <- closeParenthToken
-    d <- thenToken
-    s <- stmts
-    endelifsymb <- endElifToken
-    cond2 <- condition2 
-    return (TriTree NonTIf e s cond2)
-  ) <|> try (
-  -- elif (<expr>) then <stmts> endelif
-  do
-    elifsymb <- elifToken
-    p1 <- openParenthToken
-    e <- expr0
-    p2 <- closeParenthToken
-    d <- thenToken
-    s <- stmts
-    endelifsymb <- endElifToken
-    return (TriTree NonTIf e s None)
-  ) <|> try (
-  -- else then <stmts> endelse
+  -- else <stmts> endif
   do
     elsesymb <- elseToken
-    d <- thenToken
     s <- stmts
-    endelsesymb <- endElseToken
+    endifsymb <- endIfToken
     return (UniTree NonTElse s)
   )
 

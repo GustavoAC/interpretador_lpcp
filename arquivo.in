@@ -1,25 +1,19 @@
-[[int]] matriz;
-ptr [[int]] matrizRef;
-matrizRef => matriz;
-setListSize(matrizRef, 5);
+int a;
+if (a == 0) then
+	print a;
+else
+	print "mentira";
+endif
 
-int i = 0;
-while (i < 5) do
-	int j = 0;
-
-	[int] linha;
-	ptr [int] linhaRef;
-	linhaRef => linha;
-	setListSize(linhaRef, 5);
-
-	while (j < 5) do
-		linha[j] = i * 5 + j;
-		j = j + 1;
-	endwhile
-
-	matriz[i] = linha;
-
-	i = i + 1;
-endwhile
-
-print matriz;
+if (a < 0) then
+	print "mentira";
+else if (a == 0) then
+	a = 5;
+	if (a == 3) then
+		print "mentira";
+	else if (a == 4) then
+		print "mentira";
+	else
+		print "show";
+	endif
+endif
