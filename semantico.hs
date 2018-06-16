@@ -266,7 +266,34 @@ parseType (LeafToken (TypeString _)) = StringType
 parseType (LeafToken (TypeBoolean _)) = BoolType
 parseType _ = error "Erro inesperado em parseType"
 
+getInput :: String
+getInput = unsafePerformIO (getLine)
+
+getInputOfType :: Token -> (Type, Value)
+getInputOfType (TypeInt _) = (IntType, Int value)
+    where
+        value = read getInput :: Int
+getInputOfType (TypeFloat _) = (FloatType, Float value)
+    where
+        value = read getInput :: Float
+getInputOfType (TypeString _) = (StringType, String value)
+    where
+        value = read getInput :: String
+getInputOfType (TypeBoolean _) = (BoolType, Bool value)
+    where
+        value = read getInput :: Bool
+
 assignToId :: State -> TokenTree -> TokenTree -> State
+assignToId st id (UniTree NonTScan (LeafToken typ)) = finalState
+    where
+        valor = getInputOfType typ
+        -- valor = read getInput :: Int
+        -- (st1, exprRes) = (st, (IntType, Int valor))
+        (st1, exprRes) = (st, valor)
+        (st2, finalVal) = criarValorParaAtribuicao st1 id exprRes
+        (State (SymbolTable a b c d (Memory mem)) io flag) = st2
+        finalMem = atribuirVar mem finalVal
+        finalState = (State (SymbolTable a b c d (Memory finalMem)) io flag)
 assignToId st id expr = finalState
     where
         (st1, exprRes) = avaliarExpressao st expr

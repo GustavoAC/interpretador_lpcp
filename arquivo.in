@@ -1,3 +1,7 @@
+print("Digite um numero");
+int a = scan int;
+print a;
+
 [int] lista;
 ptr [int] listaRef;
 listaRef => lista;
