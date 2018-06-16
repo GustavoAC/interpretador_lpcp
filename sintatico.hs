@@ -1,5 +1,6 @@
 -- Comente para executar o main local
-module Sintatico (TokenTree(..), NonTToken(..), parser) where
+-- module Sintatico (TokenTree(..), NonTToken(..), parser) where
+
 
 import Lexico
 import Text.Parsec
@@ -1247,7 +1248,7 @@ listParam = try (
   )
 
 exprId :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-exprId = try (
+exprId =  try (
   -- $(algo)[]
   do 
     a <- symAdressOpToken
@@ -1277,12 +1278,21 @@ exprId = try (
     b <- listIndexes
     return (DualTree NonTArray (makeToken a) b) -- ?
   ) <|> try (
-  -- a.prop
+  -- (exprId).prop
   do 
-    a <- exprId
+    p1 <- openParenthToken
+    a  <- exprId
+    p2 <- closeParenthToken
+    b  <- endPointToken
+    c  <- exprId
+    return (DualTree NonTAccessStruct a c)
+  ) <|> try (
+  -- id.prop
+  do 
+    a <- idToken
     b <- endPointToken
     c <- exprId
-    return (DualTree NonTAccessStruct a c)
+    return (DualTree NonTAccessStruct (makeToken a) c)
   ) <|> try (
   -- a
   do 
@@ -1316,8 +1326,8 @@ parser tokens = runParserT program [] "Error message" tokens
 {--
   Descomente para usar o main local
 --}
--- main :: IO ()
--- main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
---              { Left err -> print err; 
---                Right ans -> print ans
---              }
+main :: IO ()
+main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
+              { Left err -> print err; 
+                Right ans -> print ans
+              }

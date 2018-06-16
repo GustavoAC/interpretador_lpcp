@@ -1,34 +1,4 @@
-[[int]] matriz;
-ptr [[int]] matrizRef;
-matrizRef => matriz;
-setListSize(matrizRef, 5);
-
-int i = 0;
-while (i < 5) do
-	int j = 0;
-
-	[int] linha;
-	ptr [int] linhaRef;
-	linhaRef => linha;
-	setListSize(linhaRef, 5);
-
-	while (j < 5) do
-		linha[j] = i * 5 + j;
-		j = j + 1;
-	endwhile
-
-	matriz[i] = linha;
-
-	i = i + 1;
-endwhile
-
-int integer = 4;
-ptr int pont;
-
-pont => integer;
-int trash = soma(2, 4, pont);
-
-print $pont;
-
-a = 3;
-print matriz;
+instancia.fffdf = 3;
+instancia.fffdf[50] = 3;
+instancia.fffdf.res = 3;
+($ponteiro).($p).a[1] = 3;
