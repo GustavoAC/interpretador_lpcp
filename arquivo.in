@@ -1,29 +1,26 @@
-struct aaa {
-	int aaaaa;
-	float bb;
-}
+[[int]] matriz;
+ptr [[int]] matrizRef;
+matrizRef => matriz;
+setListSize(matrizRef, 5);
 
-struct aaa {
-	int aaaaa;
-	float bb;
-}
+int i = 0;
+while (i < 5) do
+	int j = 0;
 
-function teste (int a, b, c; float d, e, f) : int { 
-	ptr int exemplo, t => new int, p => a;
-	float teste2 = 2.3;
+	[int] linha;
+	ptr [int] linhaRef;
+	linhaRef => linha;
+	setListSize(linhaRef, 5);
 
-	delete exemplo;
-	return a;
-}
+	while (j < 5) do
+		linha[j] = i * 5 + j;
+		j = j + 1;
+	endwhile
 
-function soma (int a, b; ptr int pont) : int {
-	$pont = a + b;
-	return 0;
-}
+	matriz[i] = linha;
 
-function func_vazia () : int { 
-	return 4;
-}
+	i = i + 1;
+endwhile
 
 int integer = 4;
 ptr int pont;
@@ -34,3 +31,4 @@ int trash = soma(2, 4, pont);
 print $pont;
 
 a = 3;
+print matriz;

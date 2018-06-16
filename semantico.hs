@@ -36,7 +36,19 @@ data Memory = Memory [Variable] deriving (Eq, Show)
 --                         id   tipo valor escopo
 data Variable = Variable String Type Value Scope deriving (Eq, Show)
 
-data Type = IntType | FloatType | StringType | BoolType | ListType Type | PointerType Type | StructType String deriving (Eq, Show)
+data Type = IntType | FloatType | StringType | BoolType | ListType Type | PointerType Type | StructType String | AnyType deriving (Show)
+instance Eq Type where
+    (IntType) == (IntType) = True
+    (FloatType) == (FloatType) = True
+    (StringType) == (StringType) = True
+    (BoolType) == (BoolType) = True
+    (ListType a) == (ListType b) = (a == b)
+    (PointerType a) == (PointerType b) = (a == b)
+    (StructType a) == (StructType b) = (a == b)
+    (AnyType) == (_) = True
+    (_) == (AnyType) = True
+    (_) == (_) = False
+
 data Value = Int Int |
              Float Float |
              String String |
@@ -47,8 +59,28 @@ data Value = Int Int |
              StructVal [FieldInstance] deriving (Eq, Show)
 data FieldInstance = FieldInstance Field Value deriving (Eq, Show)
 
+-- FUNÇÕES E PROCEDIMENTOS DO SISTEMA
+setListSize :: State -> [(Type, Value)] -> State
+setListSize st ((_, (Pointer id scp)):(_, (Int size)):[]) = finalState
+    where
+        (State (SymbolTable a b c d (Memory mem)) io flag) = st
+        (Variable _ (ListType subtyp) (List val) _) = lookUpWrapper mem id scp
+        finalVal = setListSizeAux val subtyp size
+        finalMem = atribuirVar mem (Variable id (ListType subtyp) (List finalVal) scp)
+        finalState = (State (SymbolTable a b c d (Memory finalMem)) io flag)
+setListSizeAux :: [Value] -> Type -> Int -> [Value]
+setListSizeAux l _ 0 = []
+setListSizeAux [] t i = (defaultVal t):(setListSizeAux [] t (i-1))
+setListSizeAux (e:l) t i = e:(setListSizeAux l t (i-1))
+
 emptyState :: State
-emptyState = State (SymbolTable [] [] [] [(Scope ("main", 1) ("main", 1))] (Memory [])) (return ()) NoneFlag
+emptyState = State (SymbolTable [] startingProcedures startingFunctions [(Scope ("main", 1) ("main", 1))] (Memory [])) (return ()) NoneFlag
+
+-- coloque as funções feitas aqui
+startingProcedures :: [Procedure]
+startingProcedures = [(SysProcedure "setListSize" [(Field (PointerType (ListType AnyType)) ""),(Field IntType "")] setListSize)]
+startingFunctions :: [Function]
+startingFunctions = []
 
 inicAnalisadorSemantico :: TokenTree -> IO()
 inicAnalisadorSemantico tree = getAnalisadorIO (analisadorSemantico tree emptyState)
@@ -58,16 +90,26 @@ getAnalisadorIO (State _ io _) = io
 
 analisadorSemantico :: TokenTree -> State -> State
 -- printando a tabela ao fim da execucao
-analisadorSemantico (UniTree NonTProgram a) (State table io flag) = 
-    State table2 ((print table2) >> io2) fflag
-    where
-        (State table2 io2 fflag) = analisadorSemantico a (State table io flag)
+-- analisadorSemantico (UniTree NonTProgram a) (State table io flag) = 
+--     State table2 ((print table2) >> io2) fflag
+--     where
+--         (State table2 io2 fflag) = analisadorSemantico a (State table io flag)
 
-analisadorSemantico (DualTree NonTProgram a b) st =
-    State table ((print table) >> io) fflag
-    where
-        (State table io fflag) = analisadorSemantico b st1
-        st1 = analisadorSemantico a st
+-- analisadorSemantico (DualTree NonTProgram a b) st =
+--     State table ((print table) >> io) fflag
+--     where
+--         (State table io fflag) = analisadorSemantico b st1
+--         st1 = analisadorSemantico a st
+
+-- analisadorSemantico (TriTree NonTProgram a b c) st =
+--     State table ((print table) >> io) fflag
+--     where
+--         (State table io fflag) = analisadorSemantico c st2
+--         st2 = analisadorSemantico b st1
+--         st1 = analisadorSemantico a st
+
+-- debug
+analisadorSemantico (LeafToken (DebugTok _)) (State table io flag) = (State table ((print table) >> io) flag)
 
 -- decl
 analisadorSemantico (DualTree NonTDecl declType ids) st = declareMany st (parseType declType) ids
@@ -85,10 +127,10 @@ analisadorSemantico (UniTree NonTDelPtr id) st = deletePointer st id
 analisadorSemantico (DualTree NonTWhile a b) st = resolveWhile st a b
 -- if 
 analisadorSemantico (TriTree NonTIf a b c) st = resolveIfCondition st a b c
--- procNoArgs
-analisadorSemantico (UniTree NonTCallProcedure a) (State table io _) = error "não implementado"
--- procArgs
-analisadorSemantico (DualTree NonTCallProcedureArgs a b) (State table io _) = error "não implementado"
+-- procCall
+analisadorSemantico (DualTree NonTCallProcedure (LeafToken (Id _ id)) b) st = startProcedure st1 id args
+    where
+        (st1, args) = evalArgs st b
 -- break
 -- analisadorSemantico (LeafToken Break) (State table io) = error "não implementado"
 -- return
@@ -96,11 +138,15 @@ analisadorSemantico (UniTree NonTReturn a) st = setReturnVal st a
 -- continue
 -- analisadorSemantico (LeafToken Continue) (State table io) = error "não implementado"
 
--- declFuncSemParams
+-- declStruc
+analisadorSemantico (DualTree NonTStructDecl id decls) st =
+    declareStruct st id decls
+-- declFunc
 analisadorSemantico (QuadTree NonTFuncDecl id params retType stmts) st =
     declareFunction st id params retType stmts
--- declFuncComParams
--- analisadorSemantico (LeafToken Continue) (State table io) = error "não implementado"
+-- declProc
+analisadorSemantico (TriTree NonTProcDecl id params stmts) st =
+    declareProcedure st id params stmts
 
 -- statements
 -- para de executar quando alguma flag está ativa
@@ -116,6 +162,7 @@ analisadorSemantico (UniTree NonTStatement a) st =
     analisadorSemantico a st
 
 -- -- repetidores genericos
+-- nontfuncdecls nontprocdecls e nontstructdecls caem por aqui
 analisadorSemantico (QuadTree _ a b c d) st = 
     analisadorSemantico d st3
     where
@@ -244,14 +291,42 @@ assureFlagIsNot f (nf:flags) =
         error "Comando de controle inesperado"
     else assureFlagIsNot f flags
 
+--                           id           decls
+declareStruct :: State -> TokenTree -> TokenTree -> State
+declareStruct st (LeafToken (Id _ id)) decls =
+    case findRes of
+        Nothing -> finalState
+        _ -> error ("Tentando declarar struct de nome " ++ id ++ " quando outro de mesmo nome já existe")
+    where
+        (State (SymbolTable structs procs funcs scope (Memory mem)) io flag) = st
+        parsedDecls = parseParams decls
+        findRes = findStruct structs id
+        finalState = (State (SymbolTable ((Struct id parsedDecls):structs) procs funcs scope (Memory mem)) io flag)
+
 --                            id          params         tipo        stmts
 declareFunction :: State -> TokenTree -> TokenTree -> TokenTree -> TokenTree -> State
-declareFunction st (LeafToken (Id _ id)) params typ stmts = finalState
+declareFunction st (LeafToken (Id _ id)) params typ stmts =
+    case findRes of
+        Nothing -> finalState
+        _ -> error ("Tentando declarar função de nome " ++ id ++ " quando outra já existe com o mesmo nome e parâmetros")
     where
         (State (SymbolTable structs procs funcs scope (Memory mem)) io flag) = st
         retType = parseType typ
         parsedParams = parseParams params
+        findRes = findFunc funcs id parsedParams
         finalState = (State (SymbolTable structs procs ((Function id retType parsedParams stmts):funcs) scope (Memory mem)) io flag)
+
+--                            id          params         stmts
+declareProcedure :: State -> TokenTree -> TokenTree -> TokenTree -> State
+declareProcedure st (LeafToken (Id _ id)) params stmts =
+    case findRes of
+        Nothing -> finalState
+        _ -> error ("Tentando declarar procedimento de nome " ++ id ++ " quando outro já existe com o mesmo nome e parâmetros")
+    where
+        (State (SymbolTable structs procs funcs scope (Memory mem)) io flag) = st
+        parsedParams = parseParams params
+        findRes = findProc procs id parsedParams
+        finalState = (State (SymbolTable structs ((Procedure id parsedParams stmts):procs) funcs scope (Memory mem)) io flag)
 
 parseParams :: TokenTree -> [Field]
 parseParams None = []
@@ -284,7 +359,7 @@ startProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io
     runProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) proc params
     where
         -- acha o proc
-        proc = findProc procs procName (fieldfy params)
+        proc = findProcWrapper procs procName (fieldfy params)
 
 runProcedure :: State -> Procedure -> [(Type, Value)] -> State
 runProcedure (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) (Procedure procName fields procTree) params =
@@ -310,12 +385,9 @@ runProcedure st (SysProcedure procName fields func) params =
 startFunction :: State -> TokenTree -> [(Type, Value)] -> (State, (Type, Value))
 startFunction (State (SymbolTable structs procs funcs oldScope (Memory mem)) io flag) (LeafToken (Id _ funcName)) params =
     res
-    -- case nextFlag of
-    --     ReturnFlag -> res
-    --     _ -> error ("Esperava retorno na função " ++ funcName)
     where
         -- acha a func
-        (Function _ retType fields funcTree) = findFunc funcs funcName (fieldfy params)
+        (Function _ retType fields funcTree) = findFuncWrapper funcs funcName (fieldfy params)
         -- gera proximoescopo
         newStartingScopeDepth = findNextScopeDepthFromMem mem funcName
         newStartingScope = Scope (funcName, newStartingScopeDepth) (funcName, 1)
@@ -430,7 +502,7 @@ checkCondition st cond = case exprRes of
 
 findNextScopeDepthFromScope :: [Scope] -> String -> Int
 findNextScopeDepthFromScope [] _ = 1
-findNextScopeDepthFromScope ((Scope (scName, scDepth) (_,_)):scopes) name =
+findNextScopeDepthFromScope ((Scope (_,_) (scName, scDepth)):scopes) name =
     if scName == name then
         if (scDepth + 1) > res then
             scDepth + 1
@@ -722,25 +794,58 @@ fieldfy ((t, v):params) = f:(fieldfy params)
     where
         f = Field t []
 
+findProcWrapper :: [Procedure] -> String -> [Field] -> Procedure
+findProcWrapper procs name fields =
+    case res of
+        Nothing -> error "Procedimento não declarado"
+        Just p -> p
+    where
+        res = findProc procs name fields
+
 --         procedimentos    nome      tipos
-findProc :: [Procedure] -> String -> [Field] -> Procedure
-findProc [] _ _ = error "Procedimento não declarado"
+findProc :: [Procedure] -> String -> [Field] -> Maybe Procedure
+findProc [] _ _ = Nothing
 findProc ((Procedure procName procFields tree):procs) tarName tarFields =
     if procName == tarName && procFields == tarFields
-        then (Procedure procName procFields tree)
+        then Just (Procedure procName procFields tree)
     else findProc procs tarName tarFields
 findProc ((SysProcedure procName procFields func):procs) tarName tarFields =
     if procName == tarName && procFields == tarFields
-        then (SysProcedure procName procFields func)
+        then Just (SysProcedure procName procFields func)
     else findProc procs tarName tarFields
 
+findFuncWrapper :: [Function] -> String -> [Field] -> Function
+findFuncWrapper funcs name fields =
+    case res of
+        Nothing -> error "Função não declarada"
+        Just f -> f
+    where
+        res = findFunc funcs name fields
+
 --            funcoes      nome      tipos
-findFunc :: [Function] -> String -> [Field] -> Function
-findFunc [] _ _ = error "Função não declarada"
+findFunc :: [Function] -> String -> [Field] -> Maybe Function
+findFunc [] _ _ = Nothing
 findFunc ((Function funcName retType funcFields tree):funcs) tarName tarFields =
     if funcName == tarName && funcFields == tarFields
-        then (Function funcName retType funcFields tree)
+        then Just (Function funcName retType funcFields tree)
     else findFunc funcs tarName tarFields
+
+--            structs      nome
+findStructWrapper :: [Struct] -> String -> Struct
+findStructWrapper structs name =
+    case res of
+        Nothing -> error "Struct não declarado"
+        Just f -> f
+    where
+        res = findStruct structs name
+
+--            structs      nome
+findStruct :: [Struct] -> String -> Maybe Struct
+findStruct [] _ = Nothing
+findStruct ((Struct name fields):structs) tarName =
+    if name == tarName
+        then Just (Struct name fields)
+    else findStruct structs name
 
 -- TODO: NÃO TESTADA
 -- Se os tipos forem incorretos joga erro
@@ -881,10 +986,7 @@ listUpTo (h:l) i = h:(listUpTo l (i-1))
 listUpTo [] _ = error "Out of bounds"
 
 listFromToEnd :: [a] -> Int -> [a]
-listFromToEnd l 0 = 
-    case l of
-        [] -> error "Out of bounds"
-        l -> l
+listFromToEnd l 0 = l
 listFromToEnd (h:l) i = listFromToEnd l (i-1)
 listFromToEnd _ _ = error "Out of bounds" -- implica que a lista é vazia e indice > 0
 

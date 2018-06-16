@@ -1,5 +1,5 @@
 -- Comente para executar o main local
--- module Sintatico (TokenTree(..), NonTToken(..), parser) where
+module Sintatico (TokenTree(..), NonTToken(..), parser) where
 
 import Lexico
 import Text.Parsec
@@ -35,7 +35,6 @@ data NonTToken =
   NonTId |
   NonTFor|
   NonTInvokeFunctionArgs |
-  NonTCallProcedureArgs  |
   NonTCallProcedure      |
   NonTReturn             |
   NonTPtrOp              |
@@ -50,14 +49,17 @@ data NonTToken =
   NonTListIds            |
   NonTPtrType            |
   NonTListType           |
-  NonTStructType         |
-  NonTListDecls     
-  deriving (Eq, Show)
+  NonTStructType deriving (Eq, Show)
 
 makeToken :: Token -> TokenTree
 makeToken tok = LeafToken tok
 
 -- parsers para os tokens
+
+debugToken :: ParsecT [Token] st IO (Token)
+debugToken = tokenPrim show update_pos get_token where
+  get_token (DebugTok pos) = Just (DebugTok pos)
+  get_token _              = Nothing
 
 --
 -- Tipos
@@ -430,8 +432,8 @@ deleteToken = tokenPrim show update_pos get_token where
 
 structToken :: ParsecT [Token] st IO (Token)
 structToken = tokenPrim show update_pos get_token where
-  get_token (Struct pos)  = Just (Struct pos)
-  get_token _            = Nothing
+  get_token (StructTok pos)  = Just (StructTok pos)
+  get_token _                = Nothing
 
 
 -- O que ele quis dizer com isso?
@@ -488,11 +490,11 @@ singleStmt = try (
    colon <- semicolonToken
    return first
   ) <|> try (
-    -- Controle
-    do
-     first <- controlStmt
-     return first
-    ) <|> try (
+  -- Controle
+  do
+    first <- controlStmt
+    return first
+  ) <|> try (
   -- Basico
   do
    first <- basicStmt
@@ -553,6 +555,16 @@ basicStmt = try (
     token <- deleteToken
     id    <- exprId
     return (UniTree NonTDelPtr (UniTree NonTId id) )
+  ) <|> try (
+  -- procedimento
+  do 
+    a <- callProcedure
+    return a
+  ) <|> try (
+  -- debug
+  do 
+    a <- debugToken
+    return (makeToken a)
   )
 
 decl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -609,25 +621,10 @@ structDecl = try (
     token <- structToken
     id    <- idToken
     s1    <- openScopeToken
-    decls <- listDecls 
+    decls <- varDecls 
+    finSC <- semicolonToken
     s2    <- closeScopeToken
     return (DualTree NonTStructDecl (makeToken id) decls)
-  )
-
-listDecls :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-listDecls = try (
-  -- tipo id, id = valor; ...
-  do
-    d1 <- decl
-    v  <- semicolonToken
-    l  <- listDecls
-    return (DualTree NonTListDecls d1 l)
-  ) <|> try (
-  -- tipo id, id = valor;
-  do
-    d <- decl
-    v <- semicolonToken
-    return d
   )
 
 funcDecl :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
@@ -683,23 +680,23 @@ procDec = try (
     s1     <- openScopeToken
     stmts  <- stmts
     s2     <- closeScopeToken
-    return (DualTree NonTProcDecl (makeToken id) stmts)
+    return (TriTree NonTProcDecl (makeToken id) None stmts)
   )
 
 varDecls :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
 varDecls = try (
-  -- tipo id, id2 = 3, ..., idn ; tipo id = 'exemplo', id2, ..., idm ; tipo...
+  -- tipo id, ..., idn ; tipo id, id2, ..., idm; tipo...
   do
     t        <- types
-    list_ids <- listIds
+    list_ids <- pureListIds
     p        <- semicolonToken
     v        <- varDecls
     return (TriTree NonTVarDecls t list_ids v)
   ) <|> try (
-  -- tipo id, id2 = 3, ..., idn
+  -- tipo id, ..., idn
   do
     t        <- types
-    list_ids <- listIds
+    list_ids <- pureListIds
     return (DualTree NonTVarDecls t list_ids)
   )
 
@@ -734,6 +731,21 @@ listIds = try (
     id <- idToken
     v <- commaToken
     list <- listIds
+    return (DualTree NonTListIds (makeToken id) list)
+  ) <|> try (
+  -- a
+  do
+    id <- idToken
+    return (LeafToken id)
+  )
+
+pureListIds :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+pureListIds = try (
+  -- a, ...
+  do 
+    id <- idToken
+    v <- commaToken
+    list <- pureListIds
     return (DualTree NonTListIds (makeToken id) list)
   ) <|> try (
   -- a
@@ -1150,6 +1162,16 @@ exprFinalIds = try (
     a <- exprFunction
     return a
   ) <|> try (
+  -- true lit
+  do 
+    a <- symBoolTrueToken
+    return (LeafToken a)
+  ) <|> (
+  -- false lit
+  do
+    a <- symBoolFalseToken
+    return (LeafToken a)
+  ) <|> try (
   -- id
   do
     a <- exprId
@@ -1169,16 +1191,6 @@ exprFinalIds = try (
   do
     a <- intLitToken
     return (LeafToken a)
-  ) <|> try (
-  -- true lit
-  do 
-    a <- symBoolTrueToken
-    return (LeafToken a)
-  ) <|> (
-  -- false lit
-  do
-    a <- symBoolFalseToken
-    return (LeafToken a)
   )
 
 -- Chamada de procedimento
@@ -1190,14 +1202,14 @@ callProcedure = try (
     a <- openParenthToken
     b <- listParam
     c <- closeParenthToken
-    return (DualTree NonTCallProcedureArgs (makeToken name) b ) -- ?
+    return (DualTree NonTCallProcedure (makeToken name) b) -- ?
   ) <|> (
   -- nomeProcedimento()
   do
     name <- idToken
     a <- openParenthToken
     b <- closeParenthToken
-    return (UniTree NonTCallProcedure (makeToken name)) -- ?
+    return (DualTree NonTCallProcedure (makeToken name) None) -- ?
   )
 
 -- Função
@@ -1304,9 +1316,8 @@ parser tokens = runParserT program [] "Error message" tokens
 {--
   Descomente para usar o main local
 --}
-
-main :: IO ()
-main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
-             { Left err -> print err; 
-               Right ans -> print ans
-             }
+-- main :: IO ()
+-- main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
+--              { Left err -> print err; 
+--                Right ans -> print ans
+--              }

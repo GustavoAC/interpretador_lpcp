@@ -81,7 +81,8 @@ tokens :-
   continue                                    { \p s -> Continue p }
   new                                         { \p s -> New p }
   delete                                      { \p s -> Delete p }
-  struct                                      { \p s -> Struct p }
+  struct                                      { \p s -> StructTok p }
+  debugPrint                                  { \p s -> DebugTok p }
   $alpha [$alpha $digit \_ \']*               { \p s -> Id p s }
   \" [$alpha $digit ! \_ \' $white]* \"       { \p s -> StrLit p (firstLast s) }
 {
@@ -137,7 +138,7 @@ data Token =
   Continue AlexPosn               |
   New AlexPosn                    |
   Delete AlexPosn                 |
-  Struct AlexPosn                 |
+  StructTok AlexPosn              |
   FloatLit AlexPosn Float         |
   IntLit AlexPosn Int             |
   StrLit AlexPosn String          |
@@ -164,6 +165,7 @@ data Token =
   SymBoolFalse AlexPosn           |
   SymBoolLessThan AlexPosn        |
   SymBoolGreaterThan AlexPosn     |
+  DebugTok AlexPosn               |
   Id AlexPosn String    
   deriving (Eq,Show)
 
