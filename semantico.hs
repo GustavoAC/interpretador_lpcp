@@ -278,17 +278,21 @@ getInputOfType (TypeFloat _) = (FloatType, Float value)
         value = read getInput :: Float
 getInputOfType (TypeString _) = (StringType, String value)
     where
-        value = read getInput :: String
-getInputOfType (TypeBoolean _) = (BoolType, Bool value)
-    where
-        value = read getInput :: Bool
+        value = getInput :: String
+getInputOfType _ = error "Operação de scan não permitida para esse tipo"
+
+stob :: String -> Bool
+stob str =
+    if str == "true" then
+        True
+    else if str == "false" then
+        False
+    else error "Falha na conversão de string para bool"
 
 assignToId :: State -> TokenTree -> TokenTree -> State
 assignToId st id (UniTree NonTScan (LeafToken typ)) = finalState
     where
         valor = getInputOfType typ
-        -- valor = read getInput :: Int
-        -- (st1, exprRes) = (st, (IntType, Int valor))
         (st1, exprRes) = (st, valor)
         (st2, finalVal) = criarValorParaAtribuicao st1 id exprRes
         (State (SymbolTable a b c d (Memory mem)) io flag) = st2

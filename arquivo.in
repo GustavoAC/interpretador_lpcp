@@ -1,16 +1,13 @@
-print("Digite um numero");
-int a = scan int;
-print a;
+int a, i = 0;
+a = scan int;
 
 [int] lista;
 ptr [int] listaRef;
 listaRef => lista;
 
-pushBack(listaRef, 1);
-pushBack(listaRef, 2);
-pushBack(listaRef, 3);
-pushBack(listaRef, 4);
-pushBack(listaRef, 5);
-pushBack(listaRef, 6);
-pushBack(listaRef, 7);
+while (i < a) do
+    pushBack(listaRef, i);
+    i = i + 1;
+endwhile
+
 print "Tamanho da lista: ", len(lista), "/ Lista: ", lista;
