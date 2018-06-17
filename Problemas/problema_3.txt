@@ -7,7 +7,7 @@ print "Digite a ordem da segunda matriz: ";
 int linha_matriz2 = scan int;
 int coluna_matriz2 = scan int;
 
-while (coluna_matriz1 != linha_matriz2) do
+while ((linha_matriz1 != linha_matriz2) && (coluna_matriz2 != coluna_matriz1)) do
 	print "Erro nas ordens para efetuar as operações, digite novamente as ordens:";
 	print "Digite a ordem da primeira matriz: ";
 	int linha_matriz1 = scan int;
@@ -22,6 +22,8 @@ endwhile
 
 matriz_1[[int]];
 matriz_2[[int]];
+matriz_resultado_mult [[int]];
+matriz_resultado_soma [[int]]
 
 
 print "Digite os elementos da primeira matriz";
@@ -46,4 +48,51 @@ for (int i = 0; i < linha_matriz2; i++)
 	matriz_1[i] = linha;
 endfor
 
+int aux = 0;
 
+for (int i = 0; i < linha_matriz1; i++)
+	[int] linha;
+	for (int j = 0; j < coluna_matriz2; j++)
+		linha[j] = 0;
+	endfor 
+	matriz_resultado_mult[i] = linha;
+	matriz_resultado_soma = linha;
+endfor
+
+for(int i=0; i < linha_matriz1; i++)
+	for(int j=0; j < coluna_matriz2; j++)
+        for(int x = 0; x < linha_matriz2; x++)
+            aux = aux + matriz_1[i][x] * matriz_2[x][j];
+        endfor
+        matriz_resultado_mult[i][j]=aux;
+        aux=0;
+    endfor
+endfor
+
+print "Matriz Gerada da Multiplicação: A*B";
+
+for(int i=0; i<linha_matriz1; i++)
+    for(int j=0; j < coluna_matriz2; j++)
+
+        print matriz_resultado_mult[i][j];
+    endfor
+    print "\n" ;
+endfor
+
+
+for(int i=0; i < linha_matriz1; i++)
+	for(int j=0; j < coluna_matriz2; j++)
+        matriz_resultado_soma[i][j] = matriz_1[i][j] + matriz_2[i][j];
+        aux=0;
+    endfor
+endfor
+
+ print "Matriz Gerada da Soma: A+B";
+
+for(int i=0; i<linha_matriz1; i++)
+    for(int j=0; j < coluna_matriz2; j++)
+
+        print matriz_resultado_soma[i][j];
+    endfor
+    print "\n" ;
+endfor    	
