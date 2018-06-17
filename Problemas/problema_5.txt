@@ -1,0 +1,17 @@
+procedure mdc (int m, n; ptr int r) {
+	if (m % n == 0) then
+		$r = n;
+	else if (n % m == 0) then
+		$r = m;
+	else
+		mdc(n, m % n, r);
+	endif
+}
+
+int a = 1, b = 7, r;
+ptr int pont;
+pont => r;
+
+mdc(a, b, pont);
+
+print "resultado é: ", r;

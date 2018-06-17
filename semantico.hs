@@ -2,6 +2,7 @@ import Sintatico
 import Lexico
 
 import System.IO.Unsafe
+import System.Environment
 
 
 -- ListaDeStructs(nome [campos (nome typo)]) ListaDeProcedimentos(Id Parâmetros BlocoDaFunção) ListaDeFunções(Id TipodeRetorno Parâmetros BlocoDaFunção) ListadeEscopos ListaDeVariáveis(Id Tipo Valor Escopo)
@@ -588,6 +589,7 @@ avaliarExpressao st tree = case tree of
     UniTree nonT a -> case nonT of
         NonTInvokeFunction -> startFunction st a []
         NonTId -> avaliarExpressaoParseId st a
+        a -> error (show a)
     DualTree NonTExpr (LeafToken (SymBoolNot _)) b -> res
         where
             (st1, (type1, val1)) = avaliarExpressao st b
@@ -1138,7 +1140,23 @@ lookUpAux ((Variable id ty val sc):vars) id2 sc2 =
 -- Main
 
 main :: IO ()
-main = case unsafePerformIO (parser (getTokens "arquivo.in")) of
-            { Left err -> print err; 
-              Right ans -> inicAnalisadorSemantico ans
-            }
+main = do 
+    args <- getArgs
+    case args of
+        [file] -> do 
+            -- fn <- readFile file
+            case unsafePerformIO (parser (getTokens file)) of
+                { Left err -> print err; 
+                  Right ans -> inicAnalisadorSemantico ans
+                }
+        _ -> do
+            case unsafePerformIO (parser (getTokens "helloworld.in")) of
+                { Left err -> print err; 
+                  Right ans -> inicAnalisadorSemantico ans
+                }
+
+
+    -- case unsafePerformIO (parser (getTokens "arquivo.in")) of
+    --     { Left err -> print err; 
+    --       Right ans -> inicAnalisadorSemantico ans
+    --     }

@@ -1,0 +1,112 @@
+struct rational_t {
+	float numerador;
+	float denominador;
+}
+
+function fracao (float a, b) : rational_t {
+	rational_t x;
+	x.numerador = a;
+	x.denominador = b;
+
+	return x;
+}
+
+function fracao_igual (rational_t a, b): bool {
+	float resultado_1 = a.numerador / a.denominador;
+	float resultado_2 = b.numerador / b.denominador;
+
+	return (resultado_1 == resultado_2);
+}
+
+function fracao_soma (rational_t a, b): rational_t {
+	rational_t resultado;
+	if (a.denominador == b.denominador) then
+		resultado.denominador = a.denominador;
+		resultado.numerador = a.numerador + b.numerador;
+		return resultado;
+	endif
+	
+	resultado.denominador = a.denominador * b.denominador;
+	resultado.numerador = ((resultado.denominador / a.denominador) * a.numerador) + ((resultado.denominador / b.denominador) * b.numerador);
+
+	return resultado;	
+}
+
+function fracao_subtracao (rational_t a, b): rational_t{
+	rational_t resultado;
+	if (a.denominador == b.denominador) then
+		resultado.denominador = a.denominador;
+		resultado.numerador = a.numerador - b.numerador;
+		return resultado;
+	endif
+	
+	resultado.denominador = a.denominador * b.denominador;
+	resultado.numerador = ((resultado.denominador / a.denominador) * a.numerador) - ((resultado.denominador / b.denominador) * b.numerador);
+
+	return resultado;
+}
+
+function fracao_multiplicacao (rational_t a, b): rational_t{
+	rational_t resultado; 
+
+	resultado.denominador = a.denominador * b.denominador;
+	resultado.numerador = a.numerador * b.numerador;
+
+	return resultado;
+}
+
+function fracao_divisao (rational_t a, b): rational_t{
+	rational_t resultado; 
+
+	resultado.denominador = a.denominador * b.numerador;
+	resultado.numerador = a.numerador * b.denominador;
+
+	return resultado;
+}
+
+function fracao_inverso	 (rational_t a): rational_t{
+	rational_t resultado;
+
+	resultado.numerador = a.denominador;
+	resultado.denominador = a.numerador;
+
+	return resultado;
+}
+
+function fracao_negacao (rational_t a): rational_t{
+	rational_t resultado;
+
+	resultado.numerador = -a.numerador;
+	resultado.denominador = a.denominador;
+
+	return resultado;
+}
+
+
+rational_t a, b, resultado;
+
+a.numerador = 3.0;
+a.denominador = 3.0;
+
+b.numerador = 4.0;
+b.denominador = 4.0;
+
+resultado = fracao_soma(a,b);
+print "Soma: ", resultado.numerador, "/", resultado.denominador;
+
+resultado = fraca_subtracao(a,b);
+print "Subtracao", resultado.numerador, "/", resultado.denominador;
+
+resultado = fracao_multiplicacao;
+print "Multiplicacao: ", resultado.numerador, "/", resultado.denominador;
+
+resultado = fracao_divisao;
+print "Divisão: ", resultado.numerador, "/", resultado.denominador;
+
+resultado = fracao_inverso(a);
+print "Inverso de a: ", resultado.numerador, "/", resultado.denominador;
+
+resultado = fracao_negacao(a);
+print "Negacao de a: ", resultado.numerador, "/", resultado.denominador;
+
+print "a e b sao iguais? ", fracao_igual(a,b);
