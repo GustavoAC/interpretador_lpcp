@@ -2,7 +2,7 @@ int inter1 = 0, inter2 = 0, inter3 = 0, inter4 = 0;
 
 bool continuar = true;
 while (continuar) do
-   int numero = scan int;
+   int numero = 10;
    if (numero < 0) then
        continuar = false;
    else if ((numero >= 0) && (numero<=25)) then
