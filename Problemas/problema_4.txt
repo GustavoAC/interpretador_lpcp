@@ -101,3 +101,52 @@ function fracao_negacao (rational_t a): rational_t{
 }
 
 
+rational_t a;
+rational_t b;
+rational_t resultado
+
+a.numerador = 3.0;
+a.denominador = 3.0;
+
+b.numerador = 4.0;
+b.denominador = 4.0;
+
+
+print "Soma: ";
+resultado = fracao_soma(a,b);
+print resultado.numerador;
+print "/"
+print resultado.denominador;
+
+print "Subtracao";
+resultado = fraca_subtracao(a,b);
+print resultado.numerador;
+print "/"
+print resultado.denominador;
+
+print "Multiplicacao: "
+resultado = fracao_multiplicacao;
+print resultado.numerador;
+print "/"
+print resultado.denominador;
+
+print "Divisão: ";
+resultado = fracao_divisao;
+print resultado.numerador;
+print "/"
+print resultado.denominador;
+
+print "Inverso de a: "
+resultado = fracao_inverso(a);
+print resultado.numerador;
+print "/"
+print resultado.denominador;
+
+print "Negacao de a: "
+resultado = fracao_negacao(a);
+print resultado.numerador;
+print "/"
+print resultado.denominador;
+
+print "a e b sao iguais? "
+print fracao_igual(a,b);
