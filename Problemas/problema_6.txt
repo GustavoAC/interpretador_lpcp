@@ -62,4 +62,12 @@ procedure chave_minima (arvore tree, int contador){
 		chave_minima(tree.sae, contador)
 }
 
+procedure imprimir_arvore(arvore tree){
+	
+	print tree.num;
+	imprimir_arvore(tree.sae);
+	imprimir_arvore(tree.sad);
+	
+}
+
 
