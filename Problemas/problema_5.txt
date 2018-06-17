@@ -1,0 +1,23 @@
+function mdc (int m, int n, int r): int {
+	if (m % n == 0) then
+		r = n;
+		return r;
+	endif
+	elif (n % m == 0) then
+		r = m
+		return r;
+	endelif
+	else
+		r = mdc(n, m % n);
+		return r;
+}
+
+int a = 10;
+int b = 7;
+
+int r = 0;
+
+mdc (a,b,r);
+
+print "resultado é: "
+print r;
