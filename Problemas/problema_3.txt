@@ -1,0 +1,8 @@
+print "Digite a ordem da primeira matriz: "
+int linha_matriz1 = scan int
+int coluna_matriz = scan int
+
+print "Digite a ordem da segunda matriz: "
+
+int linha_matriz2 = scan int
+int coluna_matriz2 = scan int
