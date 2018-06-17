@@ -17,71 +17,106 @@ matriz_resultado_multRef => matriz_resultado_mult;
 ptr [int] matriz_resultado_somaRef;
 matriz_resultado_somaRef => matriz_resultado_soma;
 
-for (int i = 0; i < linha_matriz1; i++)
+int i = 0;
+int j  = 0;
+
+while(i < linha_matriz1)
 	[int] linha;
 	ptr [int] = linhaRef;
-	listaRef => lista;
-	for (int j = 0; j < coluna_matriz1; j++)
+	linhaRef => linha;
+	while (j < coluna_matriz1)
 		int elemento = i;
 		pushback(linhaRef,elemento);
-	endfor 
+		j = j + 1;
+	endwhile
 	pushback(matriz_1Ref,linha);
-endfor
+	i = i + 1;
+endwhile
 
-for (int i = 0; i < linha_matriz2; i++)
+i = 0;
+j = 0;
+
+while (int i = 0; i < linha_matriz2; i++)
 	[int] linha;
-	for (int j = 0; j < coluna_matriz2; j++)
+	while (j < coluna_matriz2)
 		int elemento = i;
 		pushback(linhaRef,elemento);
-	endfor 
+		j = j + 1;
+	endwhile 
 	pushback(matriz_2Ref,linha);
-endfor
+	i = i + 1;
+endwhile
 
 int aux = 0;
+i = 0;
+j = 0;
 
-for (int i = 0; i < linha_matriz1; i++)
+while (i < linha_matriz1)
 	[int] linha;
-	for (int j = 0; j < coluna_matriz2; j++)
+	while (j < coluna_matriz2)
 		pushback(linhaRef,0);
-	endfor 
+		j = j + 1;
+	endwhile
 	pushback(matriz_resultado_multRef,linha);
 	pushback(matriz_resultado_somaRef,linha);
-endfor
+	i = i + 1;
+endwhile
 
-for(int i=0; i < linha_matriz1; i++)
-	for(int j=0; j < coluna_matriz2; j++)
-        for(int x = 0; x < linha_matriz2; x++)
+i = 0;
+j = 0;
+int x = 0;
+
+while(i < linha_matriz1)
+	while(j < coluna_matriz2)
+        while(x < linha_matriz2)
             aux = aux + matriz_1[i][x] * matriz_2[x][j];
-        endfor
+            x = x + 1;
+        endwhile
         matriz_resultado_mult[i][j]=aux;
         aux=0;
+        j = j + 1;
     endfor
+    i = i + 1;
 endfor
 
 print "Matriz Gerada da Multiplicação: A*B";
 
-for(int i=0; i<linha_matriz1; i++)
-    for(int j=0; j < coluna_matriz2; j++)
+i = 0;
+j = 0; 
+
+while(i<linha_matriz1)
+    while(j < coluna_matriz2)
 
         print matriz_resultado_mult[i][j];
-    endfor
+        j = j + 1;
+    endwhile
     print "\n" ;
-endfor
+    i = i + 1;
+endwhile
 
+i = 0;
+j = 0;
 
-for(int i=0; i < linha_matriz1; i++)
-	for(int j=0; j < coluna_matriz2; j++)
+while(i < linha_matriz1)
+	while(j < coluna_matriz2)
         matriz_resultado_soma[i][j] = matriz_1[i][j] + matriz_2[i][j];
         aux=0;
-    endfor
-endfor
+        j = j + 1;
+    endwhile
+    i = i + 1;
+endwhile
 
  print "Matriz Gerada da Soma: A+B";
 
-for(int i=0; i<linha_matriz1; i++)
-    for(int j=0; j < coluna_matriz2; j++)
+ i = 0;
+ j = 0;
+
+while(i<linha_matriz1)
+    while(j < coluna_matriz2)
 
         print matriz_resultado_soma[i][j];
-    endfor
+        j = j + 1;
+    endwhile
     print "\n" ;
+    i = i + 1;
 endfor    	
