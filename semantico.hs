@@ -1111,19 +1111,19 @@ deletePointerFromHeapMem ((Variable id ty val sc):mem) searchId searchSco =
 lookUp :: Memory -> String -> Scope -> Variable
 lookUp (Memory mem) id escopo =
     case lookUpAux mem id escopo of
-        Nothing -> error "Variável não declarada"
+        Nothing -> error ("Variável não declarada" ++ (show id))
         Just res -> res
 
 --                memoria        id      escopo
 lookUpWrapper :: [Variable] -> String -> Scope -> Variable
 lookUpWrapper a b c = 
     case lookUpAux a b c of
-        Nothing -> error "Variável não declarada"
+        Nothing -> error ("Variável não declarada" ++ (show b))
         Just res -> res
 
 --               memoria        id       escopo
 lookUpScoped :: [Variable] -> String -> [Scope] -> Variable
-lookUpScoped mem id [] = error "Variável não declarada"
+lookUpScoped mem id [] = error ("Variável não declarada" ++ (show id))
 lookUpScoped mem id (currEsc:esc) = 
     case lookUpAux mem id currEsc of
         Nothing -> lookUpScoped mem id esc

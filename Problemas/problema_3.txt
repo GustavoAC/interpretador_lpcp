@@ -5,45 +5,48 @@ int linha_matriz2 = 4;
 int coluna_matriz2 = 4;
 
 [[int]] matriz_1;
-ptr [int] matriz_1Ref;
+ptr [[int]] matriz_1Ref;
 matriz_1Ref => matriz_1;
 [[int]] matriz_2;
-ptr [int] matriz_2Ref;
+ptr [[int]] matriz_2Ref;
 matriz_2Ref => matriz_2;
 [[int]] matriz_resultado_mult;
-ptr [int] matriz_resultado_multaRef;
+ptr [[int]] matriz_resultado_multRef;
 matriz_resultado_multRef => matriz_resultado_mult;
 [[int]] matriz_resultado_soma;
-ptr [int] matriz_resultado_somaRef;
+ptr [[int]] matriz_resultado_somaRef;
 matriz_resultado_somaRef => matriz_resultado_soma;
 
 int i = 0;
-int j  = 0;
+int j = 0;
 
-while(i < linha_matriz1)
+ptr [int] linhaRef;
+while(i < linha_matriz1) do
+	j = 0;
 	[int] linha;
-	ptr [int] = linhaRef;
 	linhaRef => linha;
-	while (j < coluna_matriz1)
+	while (j < coluna_matriz1) do
 		int elemento = i;
-		pushback(linhaRef,elemento);
+		pushBack(linhaRef,elemento);
 		j = j + 1;
 	endwhile
-	pushback(matriz_1Ref,linha);
+	pushBack(matriz_1Ref,linha);
 	i = i + 1;
 endwhile
 
 i = 0;
 j = 0;
 
-while (int i = 0; i < linha_matriz2; i++)
+while (i < linha_matriz2) do
+	j = 0;
 	[int] linha;
-	while (j < coluna_matriz2)
+	linhaRef => linha;
+	while (j < coluna_matriz2) do
 		int elemento = i;
-		pushback(linhaRef,elemento);
+		pushBack(linhaRef,elemento);
 		j = j + 1;
 	endwhile 
-	pushback(matriz_2Ref,linha);
+	pushBack(matriz_2Ref,linha);
 	i = i + 1;
 endwhile
 
@@ -51,54 +54,57 @@ int aux = 0;
 i = 0;
 j = 0;
 
-while (i < linha_matriz1)
+while (i < linha_matriz1) do
 	[int] linha;
-	while (j < coluna_matriz2)
-		pushback(linhaRef,0);
+	linhaRef => linha;
+	while (j < coluna_matriz2) do 
+		pushBack(linhaRef,0);
 		j = j + 1;
 	endwhile
-	pushback(matriz_resultado_multRef,linha);
-	pushback(matriz_resultado_somaRef,linha);
+	pushBack(matriz_resultado_multRef,linha);
+	pushBack(matriz_resultado_somaRef,linha);
 	i = i + 1;
 endwhile
 
 i = 0;
 j = 0;
-int x = 0;
 
-while(i < linha_matriz1)
-	while(j < coluna_matriz2)
-        while(x < linha_matriz2)
+while(i < linha_matriz1) do
+	j = 0;
+	while(j < coluna_matriz2) do
+		int x = 0; 
+        while(x < linha_matriz2) do
             aux = aux + matriz_1[i][x] * matriz_2[x][j];
             x = x + 1;
         endwhile
         matriz_resultado_mult[i][j]=aux;
         aux=0;
         j = j + 1;
-    endfor
+    endwhile
     i = i + 1;
-endfor
+endwhile
 
 print "Matriz Gerada da Multiplicação: A*B";
 
 i = 0;
 j = 0; 
 
-while(i<linha_matriz1)
-    while(j < coluna_matriz2)
+while(i<linha_matriz1) do 
+	j = 0;
+    while(j < coluna_matriz2) do 
 
         print matriz_resultado_mult[i][j];
         j = j + 1;
     endwhile
-    print "\n" ;
     i = i + 1;
 endwhile
 
 i = 0;
 j = 0;
 
-while(i < linha_matriz1)
-	while(j < coluna_matriz2)
+while(i < linha_matriz1) do
+	j = 0;
+	while(j < coluna_matriz2 - 1) do
         matriz_resultado_soma[i][j] = matriz_1[i][j] + matriz_2[i][j];
         aux=0;
         j = j + 1;
@@ -111,12 +117,12 @@ endwhile
  i = 0;
  j = 0;
 
-while(i<linha_matriz1)
-    while(j < coluna_matriz2)
+ while(i<linha_matriz1) do
+ 	j = 0;
+    while(j < coluna_matriz2 - 1) do
 
         print matriz_resultado_soma[i][j];
         j = j + 1;
     endwhile
-    print "\n" ;
     i = i + 1;
-endfor    	
+endwhile    	
