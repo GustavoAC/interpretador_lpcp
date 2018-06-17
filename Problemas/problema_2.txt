@@ -1,9 +1,22 @@
 int inter1 = 0, inter2 = 0, inter3 = 0, inter4 = 0;
+[int] lista;
+ptr [int] listaRef;
+listaRef => lista;
 
+pushBack(listaRef, 3);
+pushBack(listaRef, 4);
+pushBack(listaRef, 70);
+pushBack(listaRef, 55);
+pushBack(listaRef, 80);
+pushBack(listaRef, 1-2);
+
+int contador;
+contador = 0; 
 bool continuar = true;
-while (continuar) do
+
+while (contador < len(lista) && continuar) do
    int numero;
-   numero = scan int;
+   numero = lista[contador];
    if (numero < 0) then
        continuar = false;
    else if ((numero >= 0) && (numero <= 25)) then
@@ -15,6 +28,8 @@ while (continuar) do
    else if ((numero >= 76) && (numero <= 100)) then
        inter4 = inter4 + 1;
    endif
+
+   contador = contador + 1;
 endwhile
 
 print inter1;

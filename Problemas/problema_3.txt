@@ -1,51 +1,40 @@
-print "Digite a ordem da primeira matriz: ";
 int linha_matriz1 = 4;
 int coluna_matriz1 = 4;
-
-print "Digite a ordem da segunda matriz: ";
 
 int linha_matriz2 = 4;
 int coluna_matriz2 = 4;
 
-while ((linha_matriz1 != linha_matriz2) && (coluna_matriz2 != coluna_matriz1)) do
-	print "Erro nas ordens para efetuar as operações, digite novamente as ordens:";
-	print "Digite a ordem da primeira matriz: ";
-	int linha_matriz1 = scan int;
-	int coluna_matriz1 = scan int;
-
-	print "Digite a ordem da segunda matriz: ";
-
-	int linha_matriz2 = scan int;
-	int coluna_matriz2 = scan int;
-endwhile
-
-
-matriz_1[[int]];
-matriz_2[[int]];
-matriz_resultado_mult [[int]];
-matriz_resultado_soma [[int]]
-
-
-print "Digite os elementos da primeira matriz";
+[[int]] matriz_1;
+ptr [int] = matriz_1Ref;
+matriz_1Ref => matriz_1;
+[[int]] matriz_2;
+ptr [int] = matriz_2Ref;
+matriz_2Ref => matriz_2;
+[[int]] matriz_resultado_mult;
+ptr [int] = matriz_resultado_multaRef;
+matriz_resultado_multRef => matriz_resultado_mult;
+[[int]] matriz_resultado_soma;
+ptr [int] = matriz_resultado_somaRef;
+matriz_resultado_somaRef => matriz_resultado_soma;
 
 for (int i = 0; i < linha_matriz1; i++)
 	[int] linha;
+	ptr [int] = linhaRef;
+	listaRef => lista;
 	for (int j = 0; j < coluna_matriz1; j++)
 		int elemento = i;
-		linha[j] = elemento;
+		pushback(linhaRef,elemento);
 	endfor 
-	matriz_1[i] = linha;
+	pushback(matriz_1Ref,linha);
 endfor
-
-print "Digite os elementos da segunda matriz";
 
 for (int i = 0; i < linha_matriz2; i++)
 	[int] linha;
 	for (int j = 0; j < coluna_matriz2; j++)
 		int elemento = i;
-		linha[j] = elemento;
+		pushback(linhaRef,elemento);
 	endfor 
-	matriz_1[i] = linha;
+	pushback(matriz_2Ref,linha);
 endfor
 
 int aux = 0;
@@ -53,10 +42,10 @@ int aux = 0;
 for (int i = 0; i < linha_matriz1; i++)
 	[int] linha;
 	for (int j = 0; j < coluna_matriz2; j++)
-		linha[j] = 0;
+		pushback(linhaRef,0);
 	endfor 
-	matriz_resultado_mult[i] = linha;
-	matriz_resultado_soma = linha;
+	pushback(matriz_resultado_multRef,linha);
+	pushback(matriz_resultado_somaRef,linha);
 endfor
 
 for(int i=0; i < linha_matriz1; i++)

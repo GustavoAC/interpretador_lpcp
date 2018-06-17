@@ -1,18 +1,2 @@
-print "Digite um numero";
-int a, b;
-a = scan int;
-print "Numero digitado: ", a;
-
-[int] lista;
-ptr [int] listaRef;
-listaRef => lista;
-
-int count;
-count = 0;
-while (count < a) do
-	pushBack(listaRef, b);	
-	count = count + 1;
-endwhile
-
-
-print "Tamanho da lista: ", len(lista), "/ Lista: ", lista;
+int a = 1-2;
+print a;
