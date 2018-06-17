@@ -279,10 +279,16 @@ getInputOfType (TypeFloat _) = (FloatType, Float value)
         value = read getInput :: Float
 getInputOfType (TypeString _) = (StringType, String value)
     where
-        value = read getInput :: String
-getInputOfType (TypeBoolean _) = (BoolType, Bool value)
-    where
-        value = read getInput :: Bool
+        value = getInput :: String
+getInputOfType _ = error "Operação de scan não permitida para esse tipo"
+
+stob :: String -> Bool
+stob str =
+    if str == "true" then
+        True
+    else if str == "false" then
+        False
+    else error "Falha na conversão de string para bool"
 
 assignToId :: State -> TokenTree -> TokenTree -> State
 assignToId st id (UniTree NonTScan (LeafToken typ)) = finalState
@@ -583,6 +589,7 @@ avaliarExpressao st tree = case tree of
     UniTree nonT a -> case nonT of
         NonTInvokeFunction -> startFunction st a []
         NonTId -> avaliarExpressaoParseId st a
+        a -> error (show a)
     DualTree NonTExpr (LeafToken (SymBoolNot _)) b -> res
         where
             (st1, (type1, val1)) = avaliarExpressao st b

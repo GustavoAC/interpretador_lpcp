@@ -1,23 +1,17 @@
-function mdc (int m, int n, int r): int {
+procedure mdc (int m, n; ptr int r) {
 	if (m % n == 0) then
-		r = n;
-		return r;
-	endif
-	elif (n % m == 0) then
-		r = m
-		return r;
-	endelif
+		$r = n;
+	else if (n % m == 0) then
+		$r = m;
 	else
-		r = mdc(n, m % n);
-		return r;
+		mdc(n, m % n, r);
+	endif
 }
 
-int a = 10;
-int b = 7;
+int a = 1, b = 7, r;
+ptr int pont;
+pont => r;
 
-int r = 0;
+mdc(a, b, pont);
 
-mdc (a,b,r);
-
-print "resultado é: "
-print r;
+print "resultado é: ", r;

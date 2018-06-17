@@ -1,5 +1,5 @@
 print "Digite um numero";
-int a;
+int a, b;
 a = scan int;
 print "Numero digitado: ", a;
 
@@ -10,7 +10,7 @@ listaRef => lista;
 int count;
 count = 0;
 while (count < a) do
-	pushBack(listaRef, count);	
+	pushBack(listaRef, b);	
 	count = count + 1;
 endwhile
 

@@ -2,16 +2,17 @@ int inter1 = 0, inter2 = 0, inter3 = 0, inter4 = 0;
 
 bool continuar = true;
 while (continuar) do
-   int numero = 10;
+   int numero;
+   numero = scan int;
    if (numero < 0) then
        continuar = false;
-   else if ((numero >= 0) && (numero<=25)) then
+   else if ((numero >= 0) && (numero <= 25)) then
        inter1 = inter1 + 1;
    else if ((numero >= 26) && (numero <= 50)) then
        inter2 = inter2 + 1;
    else if ((numero >= 51) && (numero <= 75)) then
        inter3 = inter3 + 1;
-   else if ((numero >= 76) && (numero<=100)) then
+   else if ((numero >= 76) && (numero <= 100)) then
        inter4 = inter4 + 1;
    endif
 endwhile
