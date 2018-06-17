@@ -40,4 +40,26 @@ function arvore_seq_valores ([int] seq): arvore{
 
 }
 
+procedure chave_minima (arvore tree, int contador){
+	if (tree.sad == null) then
+		print "valor minimo: ";
+		print tree.num;
+		print "Nivel: ";
+		print contador;
+	else 
+		contador = contador + 1;
+		chave_minima(tree.sad, contador)
+}
+
+procedure chave_minima (arvore tree, int contador){
+	if (tree.sae == null) then
+		print "valor maximo: ";
+		print tree.num;
+		print "Nivel: ";
+		print contador;
+	else 
+		contador = contador + 1;
+		chave_minima(tree.sae, contador)
+}
+
 
