@@ -1,0 +1,79 @@
+struct rational_t {
+	float numerador;
+	float denominador;
+}
+
+function fracao (float a, float b) : rational_t {
+	rational_t x;
+	x.numerador = a;
+	x.denominador = b;
+
+	return x;
+}
+
+function fracao_igual (rational_t a, rational_t b): bool {
+	
+	float resultado_1 = a.numerador / a.denominador;
+	float resultado_2 = b.numerador / b.denominador;
+
+	if (resultado_1 == resultado_2) then 
+		return true;
+	endif
+
+	return false;
+}
+
+function fracao_soma (rational_t a, rational_t b): rational_t{
+	
+	rational_t = resultado;
+	if (a.denominador == b.denominador) then
+		resultado.denominador = a.denominador;
+		resultado.numerador = a.numerador + b.numerador;
+		return resultado
+	endif
+	
+	resultado.denominador = a.denominador * b.denominador;
+	resultado.numerador = ((resultado.denominador / a.denominador) * a.numerador) + ((resultado.denominador / b.denominador) * b.numerador);
+
+	return resultado;
+	
+}
+
+function fracao_subtracao (rational_t a, rational_t b): rational_t{
+
+	rational_t = resultado;
+	if (a.denominador == b.denominador) then
+		resultado.denominador = a.denominador;
+		resultado.numerador = a.numerador - b.numerador;
+		return resultado
+	endif
+	
+	resultado.denominador = a.denominador * b.denominador;
+	resultado.numerador = ((resultado.denominador / a.denominador) * a.numerador) - ((resultado.denominador / b.denominador) * b.numerador);
+
+	return resultado;
+	
+}
+
+function fracao_multiplicacao (rational_t a, rational_t b): rational_t{
+
+	rational_t = resultado; 
+
+	resultado.denominador = a.denominador * b.denominador;
+	resultado.numerador = a.numerador * b.numerador;
+
+	return resultado;
+	
+}
+
+function fracao_divisao (rational_t a, rational_t b): rational_t{
+	
+}
+
+function fracao_inverso	 (rational_t a, rational_t b): rational_t{
+	
+}
+
+function fracao_negacao (rational_t a, rational_t b): rational_t{
+	
+}
