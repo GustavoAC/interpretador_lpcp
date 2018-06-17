@@ -4,38 +4,40 @@ struct arvore {
   ptr arvore sae;
 }
 
-function inserir (arvore arvore, int numero): void {
+procedure inserir (ptr arvore tree, int numero) {
 	arvore novo;
 	novo.num = numero;
-	if (arvore.sae == null) && (arvore.sad == null) then
-		if (arvore.num > numero) then
-			arvore.sae = novo;
-		endif
+	if ($tree.num > numero) then
+		if ($tree.sae == null) then
+			$tree.sae = novo;
 		else
-			arvore.sad = novo;
-		endelse
-	endif
-	if (numero > arvore.numero) then
-		inserir(arvore.sad, numero)
-	endif
+			inserir(arvore.sae, numero);
+		endif
 	else
-		inserir(arvore.sae, numero)
-	endelse
+		if ($tree.sad == null) then
+			$tree.sad = novo;
+		else
+			inserir(arvore.sad, numero);
+		endif
+	endif
 
 }
 
-function arvore_seq_valores ([int]seq): arvore{
+function arvore_seq_valores ([int] seq): arvore{
 	int contador_ex;
 	contador_ex = 1;
+	ptr arvore raizRef;
 	arvore raiz;
+	raizRef => raiz;
 	raiz.num = seq[contador_ex];
 	while (contador_ex < len(seq))
 		
-		inserir(raiz, seq[contador_ex]);
+		inserir(raizRef, seq[contador_ex]);
 
 	endwhile
 
-}
+	return raiz;
 
+}
 
 
