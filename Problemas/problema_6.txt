@@ -1,0 +1,41 @@
+struct arvore {
+  int num;
+  ptr arvore sad;
+  ptr arvore sae;
+}
+
+function inserir (arvore arvore, int numero): void {
+	arvore novo;
+	novo.num = numero;
+	if (arvore.sae == null) && (arvore.sad == null) then
+		if (arvore.num > numero) then
+			arvore.sae = novo;
+		endif
+		else
+			arvore.sad = novo;
+		endelse
+	endif
+	if (numero > arvore.numero) then
+		inserir(arvore.sad, numero)
+	endif
+	else
+		inserir(arvore.sae, numero)
+	endelse
+
+}
+
+function arvore_seq_valores ([int]seq): arvore{
+	int contador_ex;
+	contador_ex = 1;
+	arvore raiz;
+	raiz.num = seq[contador_ex];
+	while (contador_ex < len(seq))
+		
+		inserir(raiz, seq[contador_ex]);
+
+	endwhile
+
+}
+
+
+
