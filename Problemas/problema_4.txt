@@ -3,6 +3,7 @@ struct rational_t {
 	float denominador;
 }
 
+
 function fracao (float a, b) : rational_t {
 	rational_t x;
 	x.numerador = a;

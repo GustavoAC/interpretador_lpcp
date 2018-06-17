@@ -1,0 +1,76 @@
+struct arvore {
+  int num;
+  ptr arvore sad;
+  ptr arvore sae;
+}
+
+procedure inserir (ptr arvore tree, int numero) {
+	arvore novo;
+	novo.num = numero;
+	ptr arvore null;
+	if ($tree.num > numero) then
+		if ($tree.sae == null) then
+			$tree.sae = novo;
+		else
+			inserir(arvore.sae, numero);
+		endif
+	else
+		if ($tree.sad == null) then
+			$tree.sad = novo;
+		else
+			inserir(arvore.sad, numero);
+		endif
+	endif
+
+}
+
+function arvore_seq_valores ([int] seq): arvore{
+	int contador_ex;
+	contador_ex = 1;
+	ptr arvore raizRef;
+	arvore raiz;
+	raizRef => raiz;
+	raiz.num = seq[contador_ex];
+	while (contador_ex < len(seq))
+		
+		inserir(raizRef, seq[contador_ex]);
+
+	endwhile
+
+	return raiz;
+
+}
+
+procedure chave_minima (arvore tree, int contador){
+	ptr arvore null;
+	if (tree.sad == null) then
+		print "valor minimo: ";
+		print tree.num;
+		print "Nivel: ";
+		print contador;
+	else 
+		contador = contador + 1;
+		chave_minima(tree.sad, contador)
+}
+
+procedure chave_minima (arvore tree, int contador){
+	ptr arvore null;
+	if (tree.sae == null) then
+		print "valor maximo: ";
+		print tree.num;
+		print "Nivel: ";
+		print contador;
+	else 
+		contador = contador + 1;
+		chave_minima(tree.sae, contador)
+}
+
+procedure imprimir_arvore(arvore tree){
+	
+	print tree.num;
+	imprimir_arvore(tree.sae);
+	imprimir_arvore(tree.sad);
+	
+}
+
+
