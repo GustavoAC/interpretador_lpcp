@@ -1,8 +1,49 @@
-print "Digite a ordem da primeira matriz: "
-int linha_matriz1 = scan int
-int coluna_matriz = scan int
+print "Digite a ordem da primeira matriz: ";
+int linha_matriz1 = scan int;
+int coluna_matriz1 = scan int;
 
-print "Digite a ordem da segunda matriz: "
+print "Digite a ordem da segunda matriz: ";
 
-int linha_matriz2 = scan int
-int coluna_matriz2 = scan int
+int linha_matriz2 = scan int;
+int coluna_matriz2 = scan int;
+
+while (coluna_matriz1 != linha_matriz2) do
+	print "Erro nas ordens para efetuar as operações, digite novamente as ordens:";
+	print "Digite a ordem da primeira matriz: ";
+	int linha_matriz1 = scan int;
+	int coluna_matriz1 = scan int;
+
+	print "Digite a ordem da segunda matriz: ";
+
+	int linha_matriz2 = scan int;
+	int coluna_matriz2 = scan int;
+endwhile
+
+
+matriz_1[[int]];
+matriz_2[[int]];
+
+
+print "Digite os elementos da primeira matriz";
+
+for (int i = 0; i < linha_matriz1; i++)
+	[int] linha;
+	for (int j = 0; j < coluna_matriz1; j++)
+		int elemento = scan int;
+		linha[j] = elemento;
+	endfor 
+	matriz_1[i] = linha;
+endfor
+
+print "Digite os elementos da segunda matriz";
+
+for (int i = 0; i < linha_matriz2; i++)
+	[int] linha;
+	for (int j = 0; j < coluna_matriz2; j++)
+		int elemento = scan int;
+		linha[j] = elemento;
+	endfor 
+	matriz_1[i] = linha;
+endfor
+
+
