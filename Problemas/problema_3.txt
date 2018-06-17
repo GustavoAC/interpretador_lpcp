@@ -5,16 +5,16 @@ int linha_matriz2 = 4;
 int coluna_matriz2 = 4;
 
 [[int]] matriz_1;
-ptr [int] = matriz_1Ref;
+ptr [int] matriz_1Ref;
 matriz_1Ref => matriz_1;
 [[int]] matriz_2;
-ptr [int] = matriz_2Ref;
+ptr [int] matriz_2Ref;
 matriz_2Ref => matriz_2;
 [[int]] matriz_resultado_mult;
-ptr [int] = matriz_resultado_multaRef;
+ptr [int] matriz_resultado_multaRef;
 matriz_resultado_multRef => matriz_resultado_mult;
 [[int]] matriz_resultado_soma;
-ptr [int] = matriz_resultado_somaRef;
+ptr [int] matriz_resultado_somaRef;
 matriz_resultado_somaRef => matriz_resultado_soma;
 
 for (int i = 0; i < linha_matriz1; i++)
