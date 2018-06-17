@@ -38,7 +38,7 @@ data NonTToken =
   NonTCallProcedure      |
   NonTReturn             |
   NonTPtrOp              |
-  NonTArray              |
+  NonTAccessArray        |
   NonTParams             |
   NonTListIndex          |
   NonTIndex              |
@@ -46,6 +46,7 @@ data NonTToken =
   NonTPrint              |
   NonTAccessStruct       |
   NonTScan               |
+  NonTIdModifiers        |
   NonTListIds            |
   NonTPtrType            |
   NonTListType           |
@@ -1232,58 +1233,62 @@ listParam = try (
     a <- expr0
     return (UniTree NonTParams a)
   )
-
+  
 exprId :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
-exprId =  try (
-  -- $(algo)[]
-  do 
-    a <- symAdressOpToken
-    b <- openParenthToken
-    c <- exprId
-    d <- closeParenthToken
-    e <- listIndexes
-    return (DualTree NonTArray (UniTree NonTPtrOp c) e) -- ?
-  ) <|> try (
-  -- $( algo )
+exprId = try (
+  -- $exprId
   do
     a <- symAdressOpToken
-    b <- openParenthToken
-    c <- exprId
-    d <- closeParenthToken
-    return (UniTree NonTPtrOp c)
-  ) <|> try ( 
-  -- $a 
-  do 
+    b <- exprId
+    return (UniTree NonTPtrOp b)
+  ) <|> try (
+  -- ($exprId)<1>
+  do
+    op <- openParenthToken
     a <- symAdressOpToken
     b <- exprId
-    return (UniTree NonTPtrOp b) -- ?
+    cl <- closeParenthToken
+    return (UniTree NonTPtrOp b)
   ) <|> try (
-  -- a[] 
+  -- <id><1>
   do 
-    a <- idToken
-    b <- listIndexes
-    return (DualTree NonTArray (makeToken a) b) -- ?
+    id <- idToken
+    rest <- exprIdComps
+    return (DualTree NonTIdModifiers (makeToken id) rest)
   ) <|> try (
-  -- (exprId).prop
-  do 
-    p1 <- openParenthToken
-    a  <- exprId
-    p2 <- closeParenthToken
-    b  <- endPointToken
-    c  <- exprId
-    return (DualTree NonTAccessStruct a c)
+  -- <id>
+  do
+    id <- idToken
+    return (makeToken id)
+  )
+
+-- <1> -> .<nome><1> | [<expr0>]<1> | .<nome> | [<expr0>]
+exprIdComps :: ParsecT [Token] [(Token,Token)] IO(TokenTree)
+exprIdComps = try (
+  -- .<nome><1>
+  do
+    pont <- endPointToken
+    id <- idToken
+    rest <- exprIdComps
+    return (DualTree NonTAccessStruct (makeToken id) rest)
   ) <|> try (
-  -- id.prop
-  do 
-    a <- idToken
-    b <- endPointToken
-    c <- exprId
-    return (DualTree NonTAccessStruct (makeToken a) c)
+  do
+    op <- openBracketToken
+    expr <- expr0
+    cl <- closeBracketToken
+    rest <- exprIdComps
+    return (DualTree NonTAccessArray expr rest)
   ) <|> try (
-  -- a
-  do 
-    a <- idToken
-    return (LeafToken a)
+  do
+    pont <- endPointToken
+    id <- idToken
+    return (DualTree NonTAccessStruct (makeToken id) None)
+  ) <|> try (
+  do
+    op <- openBracketToken
+    expr <- expr0
+    cl <- closeBracketToken
+    return (DualTree NonTAccessArray expr None)
   )
 
 listIndexes :: ParsecT [Token] [(Token,Token)] IO(TokenTree)

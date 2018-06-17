@@ -74,13 +74,14 @@ setListSize st ((_, (Pointer id scp)):(_, (Int size)):[]) = finalState
     where
         (State (SymbolTable a b c d (Memory mem)) io flag) = st
         (Variable _ (ListType subtyp) (List val) _) = lookUpWrapper mem id scp
-        finalVal = setListSizeAux val subtyp size
+        finalVal = setListSizeAux st val subtyp size
         finalMem = atribuirVar mem (Variable id (ListType subtyp) (List finalVal) scp)
         finalState = (State (SymbolTable a b c d (Memory finalMem)) io flag)
-setListSizeAux :: [Value] -> Type -> Int -> [Value]
-setListSizeAux l _ 0 = []
-setListSizeAux [] t i = (defaultVal t):(setListSizeAux [] t (i-1))
-setListSizeAux (e:l) t i = e:(setListSizeAux l t (i-1))
+
+setListSizeAux :: State -> [Value] -> Type -> Int -> [Value]
+setListSizeAux st l _ 0 = []
+setListSizeAux st [] t i = (defaultVal st t):(setListSizeAux st [] t (i-1))
+setListSizeAux st (e:l) t i = e:(setListSizeAux st l t (i-1))
 
 pushBack :: State -> [(Type, Value)] -> State
 pushBack st (((PointerType (ListType typ1)), (Pointer id scp)):(typ2, newVal):[]) =
@@ -218,7 +219,7 @@ declareMany st typ (DualTree NonTListIds (LeafToken (Id _ id)) rest) =
     declareMany finalSt typ rest
     where
         (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io flag) = st
-        newVar = Variable id typ (defaultVal typ) currScope
+        newVar = Variable id typ (defaultVal st typ) currScope
         finalMem = instanciarVar mem newVar
         finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io flag)
 declareMany st typ (DualTree NonTListIds (DualTree NonTAssign (UniTree NonTId (LeafToken (Id _ id))) expr) rest) =
@@ -231,7 +232,7 @@ declareMany st typ (DualTree NonTListIds (DualTree NonTAssign (UniTree NonTId (L
 declareMany st typ (LeafToken (Id _ id)) = finalSt
     where
         (State (SymbolTable a b c (currScope:scopes) (Memory mem)) io flag) = st
-        newVar = Variable id typ (defaultVal typ) currScope
+        newVar = Variable id typ (defaultVal st typ) currScope
         finalMem = instanciarVar mem newVar
         finalSt = (State (SymbolTable a b c (currScope:scopes) (Memory finalMem)) io flag)
 declareMany st typ (DualTree NonTAssign (UniTree NonTId (LeafToken (Id _ id))) expr) = finalSt
@@ -248,14 +249,21 @@ declareWithVal mem id expectedType realType val currScope =
         instanciarVar mem (Variable id realType val currScope)
     else error "Erro na declaração: Tipo da expressão não corresponde ao tipo declarado"
 
-defaultVal :: Type -> Value
-defaultVal IntType = Int 0
-defaultVal FloatType = Float 0.0
-defaultVal StringType = String []
-defaultVal BoolType = Bool False
-defaultVal (PointerType _) = Pointer [] (Scope ([],0) ([],0))
-defaultVal (ListType _) = List []
-defaultVal (StructType _) = StructVal []
+defaultVal :: State -> Type -> Value
+defaultVal _ IntType = Int 0
+defaultVal _ FloatType = Float 0.0
+defaultVal _ StringType = String []
+defaultVal _ BoolType = Bool False
+defaultVal _ (PointerType _) = Pointer [] (Scope ([],0) ([],0))
+defaultVal _ (ListType _) = List []
+defaultVal st (StructType id) = StructVal (defaultStructVal st fields)
+    where
+        (State (SymbolTable structs b c d e) _ _) = st
+        (Struct _ fields) = (findStructWrapper structs id)
+
+defaultStructVal :: State -> [Field] -> [FieldInstance]
+defaultStructVal _ [] = []
+defaultStructVal st ((Field typ id):fields) = (FieldInstance (Field typ id) (defaultVal st typ)):(defaultStructVal st fields) 
 
 parseType :: TokenTree -> Type
 parseType (UniTree NonTListType a) = ListType (parseType a)
@@ -321,15 +329,15 @@ pointToId st ptr typ = finalState
         (State (SymbolTable structs procs funcs scope (Memory mem)) io flag) = st
         finalType = parseType typ
         newId = show (findNextHeapId mem)
-        mem2 = instantiateNewHeapVar mem finalType newId
+        mem2 = instantiateNewHeapVar st mem finalType newId
         st1 = (State (SymbolTable structs procs funcs scope (Memory mem2)) io flag)
         (st2, finalVal) = criarValorParaAtribuicao st1 ptr ((PointerType finalType), (Pointer newId (Scope ("heap", -1) ("heap", -1))))
         (State (SymbolTable a b c d (Memory mem3)) io2 flag2) = st2
         finalMem = atribuirVar mem3 finalVal
         finalState = (State (SymbolTable a b c d (Memory finalMem)) io2 flag2)
 --                                               id
-instantiateNewHeapVar :: [Variable] -> Type -> String -> [Variable]
-instantiateNewHeapVar mem typ id = (Variable id typ (defaultVal typ) (Scope ("heap", -1) ("heap", -1))):mem
+instantiateNewHeapVar :: State -> [Variable] -> Type -> String -> [Variable]
+instantiateNewHeapVar st mem typ id = (Variable id typ (defaultVal st typ) (Scope ("heap", -1) ("heap", -1))):mem
 
 findNextHeapId :: [Variable] -> Int
 findNextHeapId [] = 1
@@ -604,15 +612,24 @@ avaliarExpressao st tree = case tree of
         NonTExpr -> triTreeExprParser st b a c
 
 avaliarExpressaoParseId :: State -> TokenTree -> (State, (Type, Value))
-avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io flag) (LeafToken (Id _ id)) = res
+avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io flag) (DualTree NonTIdModifiers (LeafToken (Id _ id)) mods) = res
     where
         (Variable _ typ val _) = lookUpScoped mem id scopes
-        res = ((State (SymbolTable a b c scopes (Memory mem)) io flag), (typ, val))
+        res = resolveValModifiers (State (SymbolTable a b c scopes (Memory mem)) io flag) (typ, val) mods
 avaliarExpressaoParseId st (UniTree NonTPtrOp a) = dereferencePtr (avaliarExpressaoParseId st a)
-avaliarExpressaoParseId st (DualTree NonTArray idm indexes) =
-    getMatrixVal st1 typ searchedVal indexes
+
+resolveValModifiers :: State -> (Type, Value) -> TokenTree -> (State, (Type, Value))
+resolveValModifiers st ((ListType typ), val) (DualTree NonTAccessArray expr rest) = res
     where
-        (st1, (typ, searchedVal)) = avaliarExpressaoParseId st idm
+        (st1, (exprTyp, exprVal)) = avaliarExpressao st expr
+        resVal = accessListAt val exprVal
+        res = resolveValModifiers st1 (typ, resVal) rest
+resolveValModifiers st ((StructType typ), (StructVal val)) (DualTree NonTAccessStruct (LeafToken (Id _ id)) rest) = res
+    where 
+        resVal = accessStructAt val id
+        resTyp = accessStructTypeAt val id
+        res = resolveValModifiers st (resTyp, resVal) rest
+resolveValModifiers st vals None = (st, vals)
 
 dereferencePtr :: (State, (Type, Value)) -> (State, (Type, Value))
 dereferencePtr ((State (SymbolTable a b c d (Memory mem)) io flag), (_, Pointer id esc)) = res
@@ -921,6 +938,20 @@ accessListAt (List a) (Int i) = returnNthOfList a i
 accessListAt (List a) _ = error "indice inválido, esperava inteiro"
 accessListAt _ _ = error "Valor passado não é uma lista"
 
+accessStructAt :: [FieldInstance] -> String -> Value
+accessStructAt [] _ = error "Tentando acessar campo não atribuido do struct"
+accessStructAt ((FieldInstance (Field _ id) val):fields) name =
+    if (id == name) then
+        val
+    else accessStructAt fields name
+
+accessStructTypeAt :: [FieldInstance] -> String -> Type
+accessStructTypeAt [] _ = error "Tentando acessar campo não atribuido do struct"
+accessStructTypeAt ((FieldInstance (Field typ id) _):fields) name =
+    if (id == name) then
+        typ
+    else accessStructTypeAt fields name
+
 returnNthOfList :: [a] -> Int -> a
 returnNthOfList [] _ = error "Out of range"
 returnNthOfList (val:l) 0 = val
@@ -961,53 +992,35 @@ atribuirVar ((Variable vId vTyp vVal vSc):mem) (Variable id typ val sc) =
 --                          estado    idMagico    doquevaiseratrib escopoatual
 criarValorParaAtribuicao :: State -> TokenTree -> (Type, Value) -> (State, Variable)
 criarValorParaAtribuicao st (UniTree NonTId id) (newTyp, newVal) =
-        (finalSt, (criarValorFinal mem (foundVar, list) (newTyp, newVal)))
+        (criarValorFinal st foundVar (newTyp, newVal) mods)
     where
-        (finalSt, (foundVar, list)) = encontrarVarAlvo st id
+        (finalSt, (foundVar, mods)) = encontrarVarAlvo st id
         (State (SymbolTable a b c d (Memory mem)) io flag) = finalSt
 
 -- IdMagico = IdNormal String | DereferenceOf IdMagico | AtIndex IdMagico Value
 -- Special = Spec Variable [Int]
 --              memoria      idMagico       (Variável é o alvo a ser modificado)
-encontrarVarAlvo :: State -> TokenTree -> (State, (Variable, [Value]))
+encontrarVarAlvo :: State -> TokenTree -> (State, (Variable, TokenTree))
 -- IdBase
 encontrarVarAlvo st (LeafToken (Id _ id)) = res
     where
         (State (SymbolTable _ _ _ esc (Memory mem)) _ _) = st
         var = lookUpScoped mem id esc
-        res = (st, (var, []))
+        res = (st, (var, None))
 -- Pointers
 encontrarVarAlvo st (UniTree NonTPtrOp idm) =
-    if checkForPtrType solvedValue
-        then (finalSt, (encontrarVarAlvo_decypherPtr mem (Variable newId typ solvedValue newEsc), []))
-    else error ("Tentando dereferenciar algo que não é ponteiro" ++ (show solvedValue))
+    case finalTyp of
+        PointerType _ -> (finalSt, ((encontrarVarAlvo_decypherPtr mem (Variable newId finalTyp finalVal newEsc)), None))
+        _ -> error ("Tentando dereferenciar algo que não é ponteiro" ++ (show finalVal))
     where
-        (finalSt, ((Variable newId typ newVal newEsc), newList)) = encontrarVarAlvo st idm
+        (nextSt, ((Variable newId typ newVal newEsc), modifiers)) = encontrarVarAlvo st idm
+        (finalSt, (finalTyp, finalVal)) = resolveValModifiers nextSt (typ, newVal) modifiers
         (State (SymbolTable _ _ _ _ (Memory mem)) _ _) = finalSt
-        solvedValue = (encontrarVarAlvo_getMatrixVal (newVal, newList))
--- Array
-encontrarVarAlvo st (DualTree NonTArray idm indexes) =
-    (finalSt, (var, (prevIndexes ++ nextIndexes)))
+-- Mods
+encontrarVarAlvo st (DualTree NonTIdModifiers idm mods) = res
     where
-        (st1, (var, prevIndexes)) = encontrarVarAlvo st idm
-        (finalSt, nextIndexes) = encontrarVarAlvo_translateIndexes st1 indexes
-
-encontrarVarAlvo_translateIndexes :: State -> TokenTree -> (State, [Value])
-encontrarVarAlvo_translateIndexes st (DualTree NonTListIndex expr next) = res
-    where
-        (st2, (_, exprVal)) = avaliarExpressao st expr
-        (finalSt, vals) = encontrarVarAlvo_translateIndexes st2 next
-        res = (finalSt, (exprVal:vals))
-
-encontrarVarAlvo_translateIndexes st (UniTree NonTIndex expr) = res
-    where
-        (st2, (_, exprVal)) = avaliarExpressao st expr
-        res = (st2, [exprVal])
-
-encontrarVarAlvo_listAdd :: Variable -> [Value] -> Value -> (Variable, [Value])
-encontrarVarAlvo_listAdd (Variable oldId (ListType typ) oldval oldEsc) list newIndex =
-    ((Variable oldId typ oldval oldEsc), (list ++ [newIndex]))
-encontrarVarAlvo_listAdd _ _ _ = error "Tentando acessar o índice de algo que não é uma lista"
+        (st1, (var, prevMods)) = encontrarVarAlvo st idm
+        res = (st1, (var, mods))
 
 checkForPtrType :: Value -> Bool
 checkForPtrType (Pointer _ _) = True
@@ -1022,29 +1035,34 @@ encontrarVarAlvo_decypherPtr ((Variable vId vTyp (Pointer realId realEsc) vEsc):
         encontrarVarAlvo_decypherPtr mem (Variable id typ val esc)
 encontrarVarAlvo_decypherPtr (var:mem) ptr = encontrarVarAlvo_decypherPtr mem ptr
 
---                   Valor(m ou não) indices valor final
-encontrarVarAlvo_getMatrixVal :: (Value, [Value]) -> Value
-encontrarVarAlvo_getMatrixVal (val, []) = val
-encontrarVarAlvo_getMatrixVal ((List val), ((Int i):l)) = encontrarVarAlvo_getMatrixVal ((returnNthOfList val i), l)
-encontrarVarAlvo_getMatrixVal (val, (_:l)) = error "Index inválido"
-
 --                  memoria  Variavel com acessos | Valor a ser escrito | Variavel final
-criarValorFinal :: [Variable] -> (Variable, [Value]) -> (Type, Value) -> Variable
-criarValorFinal mem ((Variable idm typ currVal escm), indexes) valToChange =
-    Variable idm typ finalVal escm
-    where
-        finalVal = criarValorFinal_resolveMatrix (typ, currVal) valToChange indexes
-
---                                  ValorDaV        NovoValor      Indices   ValorFinal
-criarValorFinal_resolveMatrix :: (Type, Value) -> (Type,Value) -> [Value] -> Value
-criarValorFinal_resolveMatrix (expTyp, oldVal) (newTyp, newVal) [] =
+criarValorFinal :: State -> Variable -> (Type, Value) -> TokenTree -> (State, Variable)
+criarValorFinal st (Variable idm expTyp currVal escm) (newTyp, newVal) None =
     if expTyp == newTyp then
-        newVal
-    else error "Tipos incompatíveis na atribuição"
-criarValorFinal_resolveMatrix ((ListType typ), (List vals)) newVal ((Int i):l) = 
-    (List ((listUpTo vals i) ++ [modVal] ++ (listFromToEnd vals (i+1))))
+        (st, (Variable idm newTyp newVal escm))
+    else error ("Tentando realizar atribuição entre tipos diferentes: " ++ (show expTyp) ++ " " ++ (show newTyp))
+criarValorFinal st (Variable idm (ListType expTyp) (List currVal) escm) newVals (DualTree NonTAccessArray expr next) =
+    case exprTyp of
+        IntType -> (stFinal, finalVar)
+        _ -> error ("Tentando acessar array " ++ (show idm) ++ " com valor não inteiro")
     where
-        modVal = (criarValorFinal_resolveMatrix (typ, (returnNthOfList vals i)) newVal l)
+        (st1, (exprTyp, exprRes)) = avaliarExpressao st expr
+        (Int i) = exprRes
+        (stFinal, (Variable _ _ modVal _)) = (criarValorFinal st1 (Variable idm expTyp (returnNthOfList currVal i) escm) newVals next)
+        finalVal = (List ((listUpTo currVal i) ++ [modVal] ++ (listFromToEnd currVal (i+1))))
+        finalVar = (Variable idm (ListType expTyp) finalVal escm)
+criarValorFinal st (Variable idm (StructType expTyp) (StructVal currVal) escm) newVals (DualTree NonTAccessArray (LeafToken (Id _ id)) next) =
+    (stFinal, finalVar)
+    where
+        (stFinal, (Variable _ _ modVal _)) = (criarValorFinal st (Variable idm (accessStructTypeAt currVal id) (accessStructAt currVal id) escm) newVals next)
+        finalVal = (StructVal (modifyStructAt currVal id modVal))
+        finalVar = (Variable id (StructType expTyp) finalVal escm)
+
+modifyStructAt :: [FieldInstance] -> String -> Value -> [FieldInstance]
+modifyStructAt ((FieldInstance (Field typ id) oldVal):fields) tarId newVal =
+    if id == tarId then
+        (FieldInstance (Field typ id) newVal):fields
+    else (FieldInstance (Field typ id) oldVal):(modifyStructAt fields tarId newVal)
 
 listUpTo :: [a] -> Int -> [a]
 listUpTo _ 0 = []
@@ -1084,10 +1102,9 @@ printList (a:vals) = (printOne a) >> (printList vals)
 
 deletePointer :: State -> TokenTree -> State
 deletePointer st id =
-    if (checkForPtrType exprVal) then
-        deletePointerFromHeap midState exprVal
-    else
-        error "Impossível usar 'delete' em algo que não é ponteiro"
+    case exprTyp of
+        PointerType _ -> deletePointerFromHeap midState exprVal
+        _ -> error "Impossível usar 'delete' em algo que não é ponteiro"
     where
         (midState, (exprTyp, exprVal)) = avaliarExpressao st id;
 
