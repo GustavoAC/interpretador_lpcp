@@ -612,6 +612,10 @@ avaliarExpressao st tree = case tree of
         NonTExpr -> triTreeExprParser st b a c
 
 avaliarExpressaoParseId :: State -> TokenTree -> (State, (Type, Value))
+avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io flag) (LeafToken (Id _ id)) = res
+    where
+        (Variable _ typ val _) = lookUpScoped mem id scopes
+        res = ((State (SymbolTable a b c scopes (Memory mem)) io flag), (typ, val))
 avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io flag) (DualTree NonTIdModifiers (LeafToken (Id _ id)) mods) = res
     where
         (Variable _ typ val _) = lookUpScoped mem id scopes
@@ -992,7 +996,7 @@ atribuirVar ((Variable vId vTyp vVal vSc):mem) (Variable id typ val sc) =
 --                          estado    idMagico    doquevaiseratrib escopoatual
 criarValorParaAtribuicao :: State -> TokenTree -> (Type, Value) -> (State, Variable)
 criarValorParaAtribuicao st (UniTree NonTId id) (newTyp, newVal) =
-        (criarValorFinal st foundVar (newTyp, newVal) mods)
+    (criarValorFinal st foundVar (newTyp, newVal) mods)
     where
         (finalSt, (foundVar, mods)) = encontrarVarAlvo st id
         (State (SymbolTable a b c d (Memory mem)) io flag) = finalSt
@@ -1051,12 +1055,12 @@ criarValorFinal st (Variable idm (ListType expTyp) (List currVal) escm) newVals 
         (stFinal, (Variable _ _ modVal _)) = (criarValorFinal st1 (Variable idm expTyp (returnNthOfList currVal i) escm) newVals next)
         finalVal = (List ((listUpTo currVal i) ++ [modVal] ++ (listFromToEnd currVal (i+1))))
         finalVar = (Variable idm (ListType expTyp) finalVal escm)
-criarValorFinal st (Variable idm (StructType expTyp) (StructVal currVal) escm) newVals (DualTree NonTAccessArray (LeafToken (Id _ id)) next) =
+criarValorFinal st (Variable idm (StructType expTyp) (StructVal currVal) escm) newVals (DualTree NonTAccessStruct (LeafToken (Id _ id)) next) =
     (stFinal, finalVar)
     where
         (stFinal, (Variable _ _ modVal _)) = (criarValorFinal st (Variable idm (accessStructTypeAt currVal id) (accessStructAt currVal id) escm) newVals next)
         finalVal = (StructVal (modifyStructAt currVal id modVal))
-        finalVar = (Variable id (StructType expTyp) finalVal escm)
+        finalVar = (Variable idm (StructType expTyp) finalVal escm)
 
 modifyStructAt :: [FieldInstance] -> String -> Value -> [FieldInstance]
 modifyStructAt ((FieldInstance (Field typ id) oldVal):fields) tarId newVal =

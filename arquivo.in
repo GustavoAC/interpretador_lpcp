@@ -1,2 +1,16 @@
-int a = 1-2;
-print a;
+struct amor {
+	ptr int aha;
+	int b;
+}
+
+amor uhu;
+ptr int null;
+if (uhu.aha == null) then
+	print "oiaso";
+endif
+int i;
+uhu.aha => i;
+
+if (uhu.aha != null) then
+	print "oiaso";
+endif
