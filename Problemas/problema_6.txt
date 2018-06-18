@@ -4,19 +4,25 @@ struct arvore {
   ptr arvore sae;
 }
 
-procedure inserir (ptr arvore tree, int numero) {
-	arvore novo;
-	novo.num = numero;
+procedure inserir (ptr arvore tree; int numero) {
 	ptr arvore null;
-	if ($tree.num > numero) then
-		if ($tree.sae == null) then
-			$tree.sae = novo;
+	if (($tree).num > numero) then
+		if (($tree).sae == null) then
+			ptr arvore novo;
+			novo => new arvore;
+			$novo.num = numero;
+			($tree).sae = novo;
 		else
 			inserir(arvore.sae, numero);
 		endif
-	else
-		if ($tree.sad == null) then
-			$tree.sad = novo;
+	endif
+
+	if (($tree).num <= numero) then
+		if (($tree).sad == null) then
+			ptr arvore novo;
+			novo => new arvore;
+			$novo.num = numero;
+			($tree).sad = novo;
 		else
 			inserir(arvore.sad, numero);
 		endif
@@ -24,24 +30,7 @@ procedure inserir (ptr arvore tree, int numero) {
 
 }
 
-function arvore_seq_valores ([int] seq): arvore{
-	int contador_ex;
-	contador_ex = 1;
-	ptr arvore raizRef;
-	arvore raiz;
-	raizRef => raiz;
-	raiz.num = seq[contador_ex];
-	while (contador_ex < len(seq))
-		
-		inserir(raizRef, seq[contador_ex]);
-
-	endwhile
-
-	return raiz;
-
-}
-
-procedure chave_minima (arvore tree, int contador){
+procedure chave_minima (arvore tree; int contador){
 	ptr arvore null;
 	if (tree.sad == null) then
 		print "valor minimo: ";
@@ -50,10 +39,11 @@ procedure chave_minima (arvore tree, int contador){
 		print contador;
 	else 
 		contador = contador + 1;
-		chave_minima(tree.sad, contador)
+		chave_minima(tree.sad, contador);
+	endif
 }
 
-procedure chave_minima (arvore tree, int contador){
+procedure chave_maxima (arvore tree; int contador){
 	ptr arvore null;
 	if (tree.sae == null) then
 		print "valor maximo: ";
@@ -62,7 +52,8 @@ procedure chave_minima (arvore tree, int contador){
 		print contador;
 	else 
 		contador = contador + 1;
-		chave_minima(tree.sae, contador)
+		chave_minima(tree.sae, contador);
+	endif
 }
 
 procedure imprimir_arvore(arvore tree){
@@ -73,4 +64,32 @@ procedure imprimir_arvore(arvore tree){
 	
 }
 
+function arvore_seq_valores ([int] seq): ptr arvore {
+	int contador_ex;
+	contador_ex = 1;
+	ptr arvore raiz;
+	raiz => new arvore;
+	($raiz).num = seq[0];
+	while (contador_ex < len(seq)) do
+		inserir(raiz, seq[contador_ex]);
+		contador_ex = contador_ex + 1; 
+	endwhile
+
+	return raiz;
+}
+
+[int] lista;
+ptr [int] listaRef;
+listaRef => lista;
+
+pushBack(listaRef, 3);
+pushBack(listaRef, 80);
+pushBack(listaRef, 4);
+pushBack(listaRef, 55);
+pushBack(listaRef, 1);
+pushBack(listaRef, 70);
+
+ptr arvore raiz;
+
+raiz = arvore_seq_valores(lista);
 

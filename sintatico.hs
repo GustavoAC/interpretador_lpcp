@@ -1248,7 +1248,8 @@ exprId = try (
     a <- symAdressOpToken
     b <- exprId
     cl <- closeParenthToken
-    return (UniTree NonTPtrOp b)
+    mods <- exprIdComps
+    return (DualTree NonTIdModifiers (UniTree NonTPtrOp b) mods)
   ) <|> try (
   -- <id><1>
   do 

@@ -616,9 +616,10 @@ avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io flag) 
     where
         (Variable _ typ val _) = lookUpScoped mem id scopes
         res = ((State (SymbolTable a b c scopes (Memory mem)) io flag), (typ, val))
-avaliarExpressaoParseId (State (SymbolTable a b c scopes (Memory mem)) io flag) (DualTree NonTIdModifiers (LeafToken (Id _ id)) mods) = res
+avaliarExpressaoParseId st (DualTree NonTIdModifiers id mods) = res
     where
-        (Variable _ typ val _) = lookUpScoped mem id scopes
+        (st1, (typ, val)) = avaliarExpressaoParseId st id
+        (State (SymbolTable a b c scopes (Memory mem)) io flag) = st1
         res = resolveValModifiers (State (SymbolTable a b c scopes (Memory mem)) io flag) (typ, val) mods
 avaliarExpressaoParseId st (UniTree NonTPtrOp a) = dereferencePtr (avaliarExpressaoParseId st a)
 

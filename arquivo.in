@@ -3,14 +3,10 @@ struct amor {
 	int b;
 }
 
-amor uhu;
-ptr int null;
-if (uhu.aha == null) then
-	print "oiaso";
-endif
-int i;
-uhu.aha => i;
+ptr amor tt;
+amor aa;
+tt => aa;
 
-if (uhu.aha != null) then
-	print "oiaso";
-endif
+($tt).b = 5;
+print ($tt).b;
+print 4;
