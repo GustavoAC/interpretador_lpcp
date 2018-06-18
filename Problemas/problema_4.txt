@@ -3,7 +3,6 @@ struct rational_t {
 	float denominador;
 }
 
-
 function fracao (float a, b) : rational_t {
 	rational_t x;
 	x.numerador = a;
@@ -47,6 +46,7 @@ function fracao_subtracao (rational_t a, b): rational_t{
 	return resultado;
 }
 
+
 function fracao_multiplicacao (rational_t a, b): rational_t{
 	rational_t resultado; 
 
@@ -77,7 +77,7 @@ function fracao_inverso	 (rational_t a): rational_t{
 function fracao_negacao (rational_t a): rational_t{
 	rational_t resultado;
 
-	resultado.numerador = -a.numerador;
+	resultado.numerador = 0 - a.numerador;
 	resultado.denominador = a.denominador;
 
 	return resultado;
@@ -93,21 +93,27 @@ b.numerador = 4.0;
 b.denominador = 4.0;
 
 resultado = fracao_soma(a,b);
-print "Soma: ", resultado.numerador, "/", resultado.denominador;
+print "Soma: ", resultado.numerador, "/ ", resultado.denominador;
 
-resultado = fraca_subtracao(a,b);
-print "Subtracao", resultado.numerador, "/", resultado.denominador;
 
-resultado = fracao_multiplicacao;
+resultado = fracao_subtracao(a,b);
+print "Subtracao: ", resultado.numerador, "/", resultado.denominador;
+
+
+resultado = fracao_multiplicacao(a,b);
 print "Multiplicacao: ", resultado.numerador, "/", resultado.denominador;
 
-resultado = fracao_divisao;
+
+resultado = fracao_divisao(a,b);
 print "Divisão: ", resultado.numerador, "/", resultado.denominador;
+
 
 resultado = fracao_inverso(a);
 print "Inverso de a: ", resultado.numerador, "/", resultado.denominador;
 
+
 resultado = fracao_negacao(a);
 print "Negacao de a: ", resultado.numerador, "/", resultado.denominador;
+
 
 print "a e b sao iguais? ", fracao_igual(a,b);
